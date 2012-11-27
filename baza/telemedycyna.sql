@@ -58,6 +58,9 @@ CREATE TABLE IF NOT EXISTS `patient_data` (
   PRIMARY KEY (`PESEL`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_polish_ci;
 
+
+INSERT INTO `patient_data` (`PESEL`, `first_name`, `last_name`) VALUES('44051401458', 'Jan', 'Kowalski');
+
 -- --------------------------------------------------------
 
 --
@@ -69,8 +72,9 @@ CREATE TABLE IF NOT EXISTS `session` (
   `device_name` varchar(45) COLLATE utf8_polish_ci NOT NULL,
   `PESEL` varchar(11) COLLATE utf8_polish_ci NOT NULL,
   `start_date` datetime NOT NULL,
-  `sampling_frequency` int(11) NOT NULL,
-  `frame_size` int(11) NOT NULL,
+  `end_date` datetime,
+  `sampling_frequency` int(11),
+  `frame_size` int(11),
   PRIMARY KEY (`session_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_polish_ci;
 
@@ -87,6 +91,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `privileges` int(11) DEFAULT NULL,
   PRIMARY KEY (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_polish_ci;
+
+INSERT INTO `users` (`login`, `password`, `privileges`) VALUES('test','pass123','1');
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;

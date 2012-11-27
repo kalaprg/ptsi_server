@@ -2,11 +2,19 @@ TEMPLATE = lib
 CONFIG += staticlib
 CONFIG -= qt
 
-LIBS += -lboost_system
+LIBS += -lboost_system -lmysqlcppconn
 
 SOURCES += \
-    ptsiserver.cpp
+    ptsiserver.cpp \
+    session.cpp \
+    connection.cpp \
+    common.cpp \
+    internalconnection.cpp
 
 HEADERS += \
-    ptsiserver.h
+    ptsiserver.h \
+    session.h \
+    connection.h \
+    common.h \
+    internalconnection.h
 

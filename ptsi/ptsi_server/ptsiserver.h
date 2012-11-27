@@ -6,7 +6,17 @@
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
 #include <boost/cstdint.hpp>
+#include <mysql_driver.h>
+#include <mysql_connection.h>
+#include <cppconn/exception.h>
+#include <cppconn/connection.h>
+#include <cppconn/statement.h>
+#include <cppconn/resultset.h>
 #include <vector>
+#include <map>
+#include "connection.h"
+#include "internalconnection.h"
+#include "session.h"
 
 class PTSIServer
 {
@@ -14,82 +24,41 @@ public:
     PTSIServer(boost::asio::io_service &io_service, unsigned int port,
                std::ostream &errorStream, std::ostream &debugStream);
 
+    boost::shared_ptr<sql::Connection> databaseConnection() const;
+
 private:
-
-    enum PacketType {SET_PATIENT = 0, SETUP_TRANSMISSION, BIOSIGNALS};
-
-    class Connection;
-
-    class SetPatientPacket
-            : public boost::enable_shared_from_this<SetPatientPacket>
-    {
-    public:
-        typedef boost::shared_ptr<SetPatientPacket> pointer;
-        SetPatientPacket();
-        const std::string &login() const;
-        const std::string &password() const;
-        boost::uint64_t pesel() const;
-        friend class PTSIServer::Connection;
-    private:
-        std::string login_;
-        std::string password_;
-        boost::uint64_t pesel_;
-    };
-
-    class Connection
-            : public boost::enable_shared_from_this<Connection>
-    {
-    public:
-        typedef boost::shared_ptr<Connection> pointer;
-
-        static pointer create(boost::asio::io_service& io_service,
-                              PTSIServer &server);
-
-        boost::asio::ip::tcp::socket& socket()
-        {
-            return socket_;
-        }
-
-        void start();
-
-
-    private:
-        Connection(boost::asio::io_service& io_service, PTSIServer &server);
-        void read_header(const boost::system::error_code &error);
-
-        void do_read_string(std::string &str, boost::function<void()> &callback);
-
-        void read_string(std::string &str, boost::function<void()> &callback,
-                         const boost::system::error_code &error);
-
-        void read_string2(std::string &str, boost::function<void()> &callback,
-                          const boost::system::error_code &error);
-
-        void do_read_uint64(boost::uint64_t &data, boost::function<void()> &callback);
-
-        void read_uint64(boost::uint64_t &data, boost::function<void()> &callback,
-                         const boost::system::error_code &error);
-
-        void handle_serverResponse(const boost::system::error_code &error);
-
-        void do_setPatient(SetPatientPacket::pointer patient);
-
-        boost::asio::ip::tcp::socket socket_;
-        PTSIServer &server_;
-        std::vector<char> buffer_;
-        std::string hostname_;
-    };
-
     void start_accept();
+    void start_acceptInternal();
 
     void handle_accept(Connection::pointer new_connection,
                        const boost::system::error_code& error);
 
+    void handle_acceptInternal(InternalConnection::pointer new_connection,
+                       const boost::system::error_code& error);
+
     bool authenticate(const std::string &login, const std::string &password);
 
+    Session::pointer acquireSession(const std::string &devName, boost::uint64_t pesel);
+
+    bool initMySQL();
+    void setupSessions();
+
     boost::asio::ip::tcp::acceptor acceptor_;
+    boost::asio::ip::tcp::acceptor acceptor2_;
     std::ostream &debugStream_;
     std::ostream &errorStream_;
+
+    boost::shared_ptr<sql::Connection> connection_;
+
+    std::map<boost::uint64_t, Session::pointer> peselSessionMap_;
+    std::map<std::string, Session::pointer> deviceSessionMap_;
+
+    static std::string mysql_user_;
+    static std::string mysql_pass_;
+    static std::string mysql_db_;
+    friend class Session;
+    friend class Connection;
+    friend class InternalConnection;
 };
 
 #endif // PTSISERVER_H

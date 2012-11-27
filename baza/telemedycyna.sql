@@ -55,12 +55,13 @@ CREATE TABLE IF NOT EXISTS `patient_data` (
 --
 
 CREATE TABLE IF NOT EXISTS `session` (
-  `session_id` int(11) NOT NULL,
+  `session_id` int(11) NOT NULL AUTO_INCREMENT,
   `device_name` varchar(45) COLLATE utf8_polish_ci NOT NULL,
   `PESEL` varchar(11) COLLATE utf8_polish_ci NOT NULL,
   `start_date` datetime NOT NULL,
-  `sampling_frequency` int(11) NOT NULL,
-  `frame_size` int(11) NOT NULL,
+  `end_date` datetime,
+  `sampling_frequency` int(11),
+  `frame_size` int(11),
   PRIMARY KEY (`session_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_polish_ci;
 
@@ -71,7 +72,7 @@ CREATE TABLE IF NOT EXISTS `session` (
 --
 
 CREATE TABLE IF NOT EXISTS `users` (
-  `user_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL AUTO_INCREMENT,
   `login` varchar(45) COLLATE utf8_polish_ci NOT NULL,
   `password` varchar(45) COLLATE utf8_polish_ci NOT NULL,
   `privileges` int(11) DEFAULT NULL,

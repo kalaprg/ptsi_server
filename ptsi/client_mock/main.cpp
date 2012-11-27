@@ -68,13 +68,51 @@ int main(int argc, char* argv[])
             if(buf[1] == 1)
                 std::cerr << "SUCCESS" << std::endl;
             else
+            {
                 std::cerr << "FAILED" << std::endl;
+                return EXIT_SUCCESS;
+            }
         }
         else
         {
-            std::cerr << "Incorrect server response: " << std::hex << buf[0]
-                      << std::hex << buf[1] << std::endl;
+            std::cerr << "Incorrect server response: " << std::hex << (int)buf[0]
+                      << std::hex << (int)buf[1] << std::endl;
+
+            return EXIT_SUCCESS;
         }
+        buf.resize(5);
+        buf[0] = 1;
+        ptr = &buf[1];
+        *(static_cast<boost::uint16_t *>(ptr)) = 100;
+        ptr = &buf[3];
+        *(static_cast<boost::uint16_t *>(ptr)) = 100;
+        std::cerr << std::endl << "Configuring transmission: " << std::endl;
+        boost::asio::write(socket, boost::asio::buffer(buf));
+        buf.resize(2);
+        boost::asio::read(socket, boost::asio::buffer(buf));
+        if(buf[0] == 1)
+        {
+            if(buf[1] == 0)
+                std::cerr << "SUCCESS" << std::endl;
+            else if(buf[1] == 1)
+            {
+                std::cerr << "BAD DATA" << std::endl;
+                return EXIT_SUCCESS;
+            }
+            else
+            {
+                std::cerr << "NO AUTHENTICATION" << std::endl;
+                return EXIT_SUCCESS;
+            }
+        }
+        else
+        {
+            std::cerr << "Incorrect server response: " << std::hex << (int)buf[0]
+                      << std::hex << (int)buf[1] << std::endl;
+
+            return EXIT_SUCCESS;
+        }
+
 
 //        for (;;)
 //        {

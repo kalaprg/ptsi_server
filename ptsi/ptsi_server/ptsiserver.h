@@ -17,6 +17,7 @@
 #include "connection.h"
 #include "internalconnection.h"
 #include "session.h"
+#include "biosignaldata.h"
 
 class PTSIServer
 {
@@ -40,6 +41,8 @@ private:
 
     Session::pointer acquireSession(const std::string &devName, boost::uint64_t pesel);
 
+    BiosignalData::pointer getData(boost::uint64_t pesel);
+
     bool initMySQL();
     void setupSessions();
 
@@ -57,6 +60,7 @@ private:
     static std::string mysql_pass_;
     static std::string mysql_db_;
     friend class Session;
+    friend class BiosignalData;
     friend class Connection;
     friend class InternalConnection;
 };

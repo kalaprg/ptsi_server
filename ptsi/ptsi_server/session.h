@@ -3,6 +3,7 @@
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/cstdint.hpp>
 #include <list>
+#include <biosignaldata.h>
 #include <common.h>
 
 class PTSIServer;
@@ -23,6 +24,9 @@ public:
     boost::uint64_t getPesel() const;
     boost::uint16_t getSamplingFrequency() const;
     boost::uint16_t getFrameSize() const;
+    int getSessionID() const;
+    const PTSIServer &getServer() const;
+    BiosignalData::pointer getData();
 
 private:
     Session(const PTSIServer &server);
@@ -37,6 +41,7 @@ private:
     boost::uint64_t pesel_;
     boost::uint16_t samplingFrequency_;
     boost::uint16_t frameSize_;
+    BiosignalData::pointer data_;
 
     friend class PTSIServer;
 };

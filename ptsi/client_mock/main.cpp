@@ -12,6 +12,7 @@
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include <boost/cstdint.hpp>
+#include <unistd.h>
 
 using boost::asio::ip::tcp;
 
@@ -83,9 +84,10 @@ int main(int argc, char* argv[])
         buf.resize(5);
         buf[0] = 1;
         ptr = &buf[1];
-        *(static_cast<boost::uint16_t *>(ptr)) = 100;
+        *(static_cast<boost::uint16_t *>(ptr)) = 20;
         ptr = &buf[3];
-        *(static_cast<boost::uint16_t *>(ptr)) = 100;
+        *(static_cast<boost::uint16_t *>(ptr)) = 40;
+
         std::cerr << std::endl << "Configuring transmission: " << std::endl;
         boost::asio::write(socket, boost::asio::buffer(buf));
         buf.resize(2);
@@ -113,21 +115,31 @@ int main(int argc, char* argv[])
             return EXIT_SUCCESS;
         }
 
+        const int frameSize = 1 + 2 + 4 + 2 + 40;
+        const int dataLength = 4 + 2 + 40;
+        buf.resize(frameSize);
+        boost::uint32_t frameNum = 0;
 
-//        for (;;)
-//        {
-//            boost::array<char, 128> buf;
-//            boost::system::error_code error;
-
-//            size_t len = socket.read_some(boost::asio::buffer(buf), error);
-
-//            if (error == boost::asio::error::eof)
-//                break; // Connection closed cleanly by peer.
-//            else if (error)
-//                throw boost::system::system_error(error); // Some other error.
-
-//            std::cout.write(buf.data(), len);
-//        }
+        int cntr1, cntr2;
+        while(true)
+        {
+            cntr1 = frameNum % 16;
+            cntr2 = frameNum % 32;
+            int idx = 0;
+            buf[idx++] = 2;
+            *((boost::uint16_t*)&buf[idx]) = dataLength; idx += 2;
+            *((boost::uint32_t*)&buf[idx]) = frameNum; idx += 4;
+            buf[idx++] = cntr1;
+            buf[idx++] = cntr2;
+            for(int i = 0; i < 40; ++i, ++idx)
+            {
+                buf[idx] = (1.0 + sin(2*M_PI * i / 40.0)) * 127.0;
+            }
+            sleep(2);
+            boost::asio::write(socket, boost::asio::buffer(buf));
+            boost::asio::read(socket, boost::asio::buffer(buf,2));
+            frameNum++;
+        }
     }
     catch (std::exception& e)
     {

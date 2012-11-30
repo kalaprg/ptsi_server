@@ -2,7 +2,7 @@
 #include "internalconnection.h"
 InternalConnection::pointer
 InternalConnection::create(boost::asio::io_service &io_service,
-                                       PTSIServer &server)
+                           PTSIServer &server)
 {
     return pointer(new InternalConnection(io_service, server));
 }
@@ -43,61 +43,90 @@ void InternalConnection::handle_command2(boost::uint32_t size, const boost::syst
 {
     if(!error)
     {
-        //FIXME: check size?
-        boost::uint64_t pesel = *(boost::uint64_t *)&buffer_[0];
-        char dataType = buffer_[sizeof(pesel)];
-        char *fileNames[3] = {"test0", "test1", "test2"};
-        server_.debugStream_ << "Command for " << pesel << " " << (int)dataType;
-        int idx = sizeof(pesel) + 1;
-        if(buffer_[idx] == 0)
+        if(size < sizeof(boost::uint64_t) + 2)
+            return;
+
+        size_t restSize = size - (sizeof(boost::uint64_t) + 2);
+
+        int idx = 0;
+        boost::uint64_t pesel = *(((boost::uint64_t*)&buffer_[idx])); idx += sizeof(boost::uint64_t);
+        unsigned char readerId = buffer_[idx++];
+        enum Command {GET_SIZE = 0, READ, INIT};
+        Command cmd = (Command) buffer_[idx++];
+        switch(cmd)
         {
-            FILE *file = fopen(fileNames[dataType], "rb");
-            fseek(file, 0, SEEK_END);
-            boost::uint32_t length = ftell(file);
-            fclose(file);
+        case GET_SIZE:
+        {
+            if(restSize != 1)
+                return;
 
-            server_.debugStream_ << " Get length of file " << fileNames[dataType] << ": " << length << std::endl;
+            unsigned char dataType = buffer_[idx++];
+            BiosignalData:: pointer data(server_.getData(pesel));
+            if(!data)
+                return;
+            size_t size = data->getSize(dataType, readerId);
+            if(buffer_.size() < sizeof(boost::uint32_t))
+                buffer_.resize(sizeof(boost::uint32_t));
 
-            if(buffer_.size() < sizeof(length))
-                buffer_.resize(size);
+            idx = 0;
+            *(((boost::uint32_t*)&buffer_[idx])) = size; idx += sizeof(boost::uint32_t);
 
-            *((boost::uint32_t*)&buffer_.front()) = length;
-
-            boost::asio::async_write(socket_, boost::asio::buffer(buffer_, sizeof(length)),
+            boost::asio::async_write(socket_, boost::asio::buffer(buffer_, sizeof(boost::uint32_t)),
                                      boost::bind(&InternalConnection::handle_nextCommand,
                                                  shared_from_this(),
                                                  boost::asio::placeholders::error));
 
+            break;
         }
-        else if(buffer_[idx] == 1)
+        case READ:
         {
-            ++idx;
-            boost::uint32_t offset = *(boost::uint32_t *)&buffer_[idx];
-            boost::uint32_t length = *(boost::uint32_t *)&buffer_[idx + sizeof(offset)];
+            if(restSize != 1 + sizeof(boost::uint32_t))
+                return;
 
-            if(buffer_.size() < length + sizeof(length))
-                buffer_.resize(length + sizeof(length));
+            unsigned char dataType = buffer_[idx++];
+            boost::uint32_t size = *(((boost::uint32_t*)&buffer_[idx])); idx += sizeof(boost::uint32_t);
+            BiosignalData:: pointer data(server_.getData(pesel));
+            if(!data)
+                return;
 
-            server_.debugStream_ << " Read file: " << length << " bytes at offset " << offset << std::endl;
+            std::vector<unsigned char> buf(size);
+            data->readBytes(dataType, readerId, buf);
+            buffer_.resize(size + sizeof(boost::uint32_t));
+            idx = 0;
+            *(((boost::uint32_t*)&buffer_[idx])) = size; idx += sizeof(boost::uint32_t);
+            memcpy(&buffer_[idx], &buf.front(), size);
 
-            FILE *file = fopen(fileNames[dataType], "rb");
-            fseek(file, offset, SEEK_SET);
-            length = fread(&buffer_[sizeof(length)], 1, length, file);
+            server_.errorStream_ << "READ(" << (int)dataType << "):";
+            for(int i = 0; i<(int)size; ++i)
+                server_.errorStream_ << " " << (unsigned int)(unsigned char)buffer_[i + idx];
+            server_.errorStream_ << std::endl;
 
-            server_.debugStream_ << length << " bytes was read" << std::endl;
+            boost::asio::async_write(socket_, boost::asio::buffer(buffer_),
+                    boost::bind(&InternalConnection::handle_nextCommand,
+                                shared_from_this(),
+                                boost::asio::placeholders::error));
 
-            fclose(file);
-            *((boost::uint32_t*)&buffer_.front()) = length;
-            int bufsize = length + sizeof(length);
-
-            boost::asio::async_write(socket_, boost::asio::buffer(buffer_, bufsize),
-                                     boost::bind(&InternalConnection::handle_nextCommand,
-                                                 shared_from_this(),
-                                                 boost::asio::placeholders::error));
+            break;
         }
-        else
+        case INIT:
         {
-            server_.debugStream_ << " UNKNOWN COMMAND" << std::endl;
+            if(restSize != 1 + sizeof(boost::uint32_t))
+                return;
+
+            unsigned char dataType = buffer_[idx++];
+            boost::uint32_t size = *(((boost::uint32_t*)&buffer_[idx])); idx += sizeof(boost::uint32_t);
+            BiosignalData:: pointer data(server_.getData(pesel));
+            if(!data)
+                return;
+            data->init(dataType, readerId, size);
+
+            return handle_nextCommand(boost::system::error_code());
+
+            break;
+        }
+        default:
+            server_.errorStream_ << "Unrecognized command:" << (int) cmd << std::endl;
+            return;
         }
     }
     else
@@ -125,7 +154,7 @@ void InternalConnection::handle_nextCommand(const boost::system::error_code &err
 }
 
 InternalConnection::InternalConnection(boost::asio::io_service &io_service,
-                                                   PTSIServer &server)
+                                       PTSIServer &server)
     : socket_(io_service), server_(server)
 {
 }

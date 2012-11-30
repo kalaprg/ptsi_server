@@ -9,12 +9,14 @@ SOURCES += \
     session.cpp \
     connection.cpp \
     common.cpp \
-    internalconnection.cpp
+    internalconnection.cpp \
+    biosignaldata.cpp
 
 HEADERS += \
     ptsiserver.h \
     session.h \
     connection.h \
     common.h \
-    internalconnection.h
+    internalconnection.h \
+    biosignaldata.h
 

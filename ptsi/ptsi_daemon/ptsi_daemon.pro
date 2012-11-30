@@ -8,7 +8,7 @@ CONFIG -= qt
     LIBS += -L../ptsi_server -lptsi_server
 
     LIBS += -llogstream
-    LIBS += -lboost_system -lboost_program_options
+    LIBS += -lboost_system -lboost_filesystem -lboost_date_time -lboost_program_options -lmysqlcppconn
 
     SOURCES += \
         main.cpp \

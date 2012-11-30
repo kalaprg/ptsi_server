@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS `data` (
   `data_type` tinyint(4) NOT NULL,
   `file_path` varchar(128) COLLATE utf8_polish_ci DEFAULT NULL,
   `data_blob` blob,
-  PRIMARY KEY (`session_id`,`start_date`)
+  PRIMARY KEY (`session_id`,`start_date`,`data_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_polish_ci;
 
 --
@@ -68,7 +68,7 @@ INSERT INTO `patient_data` (`PESEL`, `first_name`, `last_name`) VALUES('44051401
 --
 
 CREATE TABLE IF NOT EXISTS `session` (
-  `session_id` int(11) NOT NULL,
+  `session_id` int(11) NOT NULL AUTO_INCREMENT,
   `device_name` varchar(45) COLLATE utf8_polish_ci NOT NULL,
   `PESEL` varchar(11) COLLATE utf8_polish_ci NOT NULL,
   `start_date` datetime NOT NULL,
@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS `session` (
 --
 
 CREATE TABLE IF NOT EXISTS `users` (
-  `user_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL AUTO_INCREMENT,
   `login` varchar(45) COLLATE utf8_polish_ci NOT NULL,
   `password` varchar(45) COLLATE utf8_polish_ci NOT NULL,
   `privileges` int(11) DEFAULT NULL,

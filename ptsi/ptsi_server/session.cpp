@@ -47,12 +47,13 @@ bool Session::associateWithPatient(const boost::uint64_t &pesel,
             }
         }
         query = "INSERT INTO session(device_name, PESEL, start_date) "
-                "VALUES('" + deviceName + "', '" + peselString + "', NOW());"
-                "SELECT LAST_INSERT_ID() AS id";
+                "VALUES('" + deviceName + "', '" + peselString + "', NOW())";
 
         stmt->executeUpdate(query);
+
+        query = "SELECT LAST_INSERT_ID() AS id FROM session;";
         {
-            boost::scoped_ptr<sql::ResultSet> res(stmt->getResultSet());
+            boost::scoped_ptr<sql::ResultSet> res(stmt->executeQuery(query));
             if(res && res->next())
             {
                 session_id_ = res->getInt("id");
@@ -71,7 +72,7 @@ bool Session::associateWithPatient(const boost::uint64_t &pesel,
     catch(sql::SQLException &e)
     {
         server_.errorStream_ << "Error executing query: \"" << query << "\":"
-                             << e.what() << std::endl;
+                             << e.what() << e.getErrorCode() << std::endl;
     }
     return false;
 }
@@ -115,6 +116,8 @@ bool Session::setupTransmission(const TransmissionSetup &setup)
 
             samplingFrequency_ = setup.samplingFrequency_;
             frameSize_ = setup.ecgFrameSize_;
+
+            data_ = BiosignalData::pointer(new BiosignalData(*this));
             return true;
 
         }
@@ -127,6 +130,14 @@ bool Session::setupTransmission(const TransmissionSetup &setup)
     }
     else
     {
+        if(setup.ecgFrameSize_ == frameSize_ && setup.samplingFrequency_ == samplingFrequency_)
+        {
+            BiosignalData::pointer newData(new BiosignalData(*this));
+            data_->checkAssign(newData);
+            data_ = newData;
+            return true;
+        }
+
         return false;
     }
 }
@@ -206,6 +217,21 @@ boost::uint16_t Session::getFrameSize() const
     return frameSize_;
 }
 
+int Session::getSessionID() const
+{
+    return session_id_;
+}
+
+const PTSIServer &Session::getServer() const
+{
+    return server_;
+}
+
+BiosignalData::pointer Session::getData()
+{
+    return data_;
+}
+
 void Session::getUnexpiredSessions(const PTSIServer &server, std::list<pointer> &sessions)
 {
     sessions.clear();
@@ -233,7 +259,8 @@ void Session::getUnexpiredSessions(const PTSIServer &server, std::list<pointer> 
             session->pesel_             = res->getInt64("PESEL");
             session->deviceName_        = res->getString("device_name");
             session->samplingFrequency_ = res->getInt("sampling_frequency");
-            session->frameSize_         = res->getInt("frame_size");
+            session->frameSize_         = res->getInt("frame_size");            
+            session->data_ = BiosignalData::pointer(new BiosignalData(*session));
             sessions.push_back(session);
         }
 

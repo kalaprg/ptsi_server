@@ -61,6 +61,7 @@ void Connection::read_header(const boost::system::error_code &error)
 
             break;
         case BIOSIGNALS:
+            server_.debugStream_ << "Received data packet" << std::endl;
             if(buffer_.size() < sizeof(boost::uint16_t))
                 buffer_.resize(sizeof(boost::uint16_t));
 
@@ -261,8 +262,10 @@ void Connection::readBioSignals(const boost::system::error_code &error)
         if(buffer_.size() < size)
             buffer_.resize(size);
 
-
-
+        boost::asio::async_read(socket_, boost::asio::buffer(buffer_, size),
+                                 boost::bind(&Connection::readBioSignals2,
+                                             shared_from_this(), size,
+                                             boost::asio::placeholders::error()));
     }
     else
     {
@@ -272,13 +275,64 @@ void Connection::readBioSignals(const boost::system::error_code &error)
 
 void Connection::readBioSignals2(boost::uint32_t size, const boost::system::error_code &error)
 {
+    if(!session_)
+        session_ = server_.acquireSession(hostname_, 0);
+
+    char response;
+    DataPacket packet;
     if(!error)
     {
+        int idx = 0;
+        packet.frameNumber_ = *((boost::uint32_t*) &buffer_[idx]); idx += sizeof(boost::uint32_t);
+        packet.saturation_ = buffer_[idx++];
+        packet.pulse_ =  buffer_[idx++];
+        uint ecgNum = size - idx;
+        packet.ecg_.resize(ecgNum);
+        for(uint i = 0; i < ecgNum; ++i, ++idx)
+        {
+            packet.ecg_[i] = buffer_[idx];
+        }
 
+        server_.debugStream_ << "Received ecg frame #" << packet.frameNumber_ << " of size " << ecgNum;
+//        for(uint i = 0; i < ecgNum; ++i, ++idx)
+//        {
+//            server_.debugStream_ << " " << (int)(char) packet.ecg_[i];
+//        }
+        server_.debugStream_ << std::endl;
+
+        if(session_ && session_->isAssociated())
+        {
+            if(session_->isTransmissionSetup() && (ecgNum % session_->getFrameSize() == 0))
+            {
+                response = 0;
+            }
+            else
+                response = 1;
+        }
+        else
+        {
+            response = 2;
+        }
     }
     else
     {
+        response = 1;
         server_.errorStream_ << __FUNCTION__ << " Error: " << error.message() << std::endl;
+    }
+
+    if(buffer_.size() < 2)
+        buffer_.resize(2);
+
+    buffer_[0] = 2;
+    buffer_[1] = response;
+    boost::asio::async_write(socket_, boost::asio::buffer(buffer_, 2),
+                             boost::bind(&Connection::handle_serverResponse,
+                                         shared_from_this(),
+                                         boost::asio::placeholders::error()));
+
+    if(response == 0)
+    {
+        session_->getData()->storePacket(packet);
     }
 }
 
@@ -286,4 +340,10 @@ Connection::Connection(boost::asio::io_service &io_service,
                        PTSIServer &server)
     : socket_(io_service), server_(server)
 {
+    server_.debugStream_ << "Connection()" << std::endl;
+}
+
+Connection::~Connection()
+{
+    server_.debugStream_ << "~Connection()" << std::endl;
 }

@@ -113,26 +113,40 @@ Session::pointer PTSIServer::acquireSession(const std::string &devName, boost::u
 
     if(it != deviceSessionMap_.end())
     {
-        if(it->second->isAssociated() && it->second->getPesel() == pesel)
+        if(pesel)
         {
-            return it->second;
-        }
-        else
-        {
-            std::map<boost::uint64_t, Session::pointer>::iterator it2 =
-                    peselSessionMap_.find(it->second->getPesel());
-
-            Session::pointer session(it2->second);
-            peselSessionMap_.erase(it2);
-            if(session->associateWithPatient(pesel, session->getDeviceName()))
+            if(it->second->isAssociated() && it->second->getPesel() == pesel)
             {
-                peselSessionMap_.insert(
-                            std::pair<boost::uint64_t,Session::pointer>(session->getPesel(), session));
-                return session;
+                return it->second;
             }
             else
             {
-                deviceSessionMap_.erase(it);
+                std::map<boost::uint64_t, Session::pointer>::iterator it2 =
+                        peselSessionMap_.find(it->second->getPesel());
+
+                Session::pointer session(it2->second);
+                peselSessionMap_.erase(it2);
+                if(session->associateWithPatient(pesel, session->getDeviceName()))
+                {
+                    peselSessionMap_.insert(
+                                std::pair<boost::uint64_t,Session::pointer>(session->getPesel(), session));
+                    return session;
+                }
+                else
+                {
+                    deviceSessionMap_.erase(it);
+                    return Session::pointer();
+                }
+            }
+        }
+        else
+        {
+            if(it->second->isAssociated())
+            {
+                return it->second;
+            }
+            else
+            {
                 return Session::pointer();
             }
         }
@@ -140,7 +154,7 @@ Session::pointer PTSIServer::acquireSession(const std::string &devName, boost::u
     else
     {
         Session::pointer session(Session::create(*this));
-        if(session->associateWithPatient(pesel, devName))
+        if(pesel && session->associateWithPatient(pesel, devName))
         {
             peselSessionMap_.insert(
                         std::pair<boost::uint64_t,Session::pointer>(session->getPesel(), session));
@@ -151,6 +165,17 @@ Session::pointer PTSIServer::acquireSession(const std::string &devName, boost::u
         else
             return Session::pointer();
     }
+}
+
+BiosignalData::pointer PTSIServer::getData(boost::uint64_t pesel)
+{
+    std::map<boost::uint64_t, Session::pointer>::iterator it =
+            peselSessionMap_.find(pesel);
+
+    if(it == peselSessionMap_.end())
+        return BiosignalData::pointer();
+
+    return it->second->getData();
 }
 
 bool PTSIServer::initMySQL()

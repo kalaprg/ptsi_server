@@ -25,9 +25,10 @@ public:
 
     void start();
 
-
+    ~Connection();
 private:
     Connection(boost::asio::io_service& io_service, PTSIServer &server);
+
     void read_header(const boost::system::error_code &error);
 
     void do_read_string(std::string &str, boost::function<void()> &callback);

@@ -44,7 +44,10 @@ void InternalConnection::handle_command2(boost::uint32_t size, const boost::syst
     if(!error)
     {
         if(size < sizeof(boost::uint64_t) + 2)
+        {
+            socket_.close();
             return;
+        }
 
         size_t restSize = size - (sizeof(boost::uint64_t) + 2);
 
@@ -58,18 +61,31 @@ void InternalConnection::handle_command2(boost::uint32_t size, const boost::syst
         case GET_SIZE:
         {
             if(restSize != 1)
+            {
+                socket_.close();
                 return;
+            }
 
             unsigned char dataType = buffer_[idx++];
             BiosignalData:: pointer data(server_.getData(pesel));
             if(!data)
+            {
+                socket_.close();
                 return;
+            }
+
             size_t size = data->getSize(dataType, readerId);
             if(buffer_.size() < sizeof(boost::uint32_t))
                 buffer_.resize(sizeof(boost::uint32_t));
 
             idx = 0;
             *(((boost::uint32_t*)&buffer_[idx])) = size; idx += sizeof(boost::uint32_t);
+
+
+            server_.errorStream_ << "GETSIZE(" << (int)dataType << "):";
+            for(int i = 0; i<(int)sizeof(boost::uint32_t); ++i)
+                server_.errorStream_ << " " << (unsigned int)(unsigned char)buffer_[i];
+            server_.errorStream_ << std::endl;
 
             boost::asio::async_write(socket_, boost::asio::buffer(buffer_, sizeof(boost::uint32_t)),
                                      boost::bind(&InternalConnection::handle_nextCommand,
@@ -81,13 +97,21 @@ void InternalConnection::handle_command2(boost::uint32_t size, const boost::syst
         case READ:
         {
             if(restSize != 1 + sizeof(boost::uint32_t))
+            {
+                server_.errorStream_  << "WRONG PACKET SIZE" << std::endl;
+                socket_.close();
                 return;
+            }
 
             unsigned char dataType = buffer_[idx++];
             boost::uint32_t size = *(((boost::uint32_t*)&buffer_[idx])); idx += sizeof(boost::uint32_t);
             BiosignalData:: pointer data(server_.getData(pesel));
-            if(!data)
+            if(!data)                
+            {
+                server_.errorStream_  << "NO DATA FOR " << pesel << std::endl;
+                socket_.close();
                 return;
+            }
 
             std::vector<unsigned char> buf(size);
             data->readBytes(dataType, readerId, buf);
@@ -111,13 +135,19 @@ void InternalConnection::handle_command2(boost::uint32_t size, const boost::syst
         case INIT:
         {
             if(restSize != 1 + sizeof(boost::uint32_t))
+            {
+                socket_.close();
                 return;
+            }
 
             unsigned char dataType = buffer_[idx++];
             boost::uint32_t size = *(((boost::uint32_t*)&buffer_[idx])); idx += sizeof(boost::uint32_t);
             BiosignalData:: pointer data(server_.getData(pesel));
             if(!data)
+            {
+                socket_.close();
                 return;
+            }
             data->init(dataType, readerId, size);
 
             return handle_nextCommand(boost::system::error_code());
@@ -126,6 +156,7 @@ void InternalConnection::handle_command2(boost::uint32_t size, const boost::syst
         }
         default:
             server_.errorStream_ << "Unrecognized command:" << (int) cmd << std::endl;
+            socket_.close();
             return;
         }
     }

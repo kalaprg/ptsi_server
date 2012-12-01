@@ -28,7 +28,7 @@ public:
 private:
     struct Reader
     {
-        Reader(unsigned char readerId) : pos_(0), readerId_(readerId), prev_(false) {}
+        Reader(unsigned char readerId, bool prev = false) : pos_(0), readerId_(readerId), prev_(prev) {}
         std::fstream::pos_type pos_;
         unsigned char readerId_;
         bool prev_;
@@ -38,8 +38,9 @@ private:
     {
     public:
         typedef boost::shared_ptr<DataBlock> pointer;
-        DataBlock(const BiosignalData& biosignalData, double samplingFreq, size_t frameSize, int type,
-                  boost::posix_time::ptime startTime = boost::posix_time::second_clock::local_time());
+        DataBlock(BiosignalData& biosignalData, double samplingFreq, size_t frameSize, int type,
+                  boost::posix_time::ptime startTime = boost::posix_time::second_clock::local_time(),
+                  bool fork = false);
 
         ~DataBlock();
 
@@ -51,6 +52,8 @@ private:
         void release();
 
     private:
+        DataBlock::pointer fork();
+
         void createDataBlock();
         void createNewDataBlock();
         void closeDataBlock();
@@ -58,7 +61,7 @@ private:
         boost::posix_time::ptime frameNumToTime(boost::uint32_t frameNum) const;
         int frameNumToPos(boost::uint32_t frameNum) const;
 
-        const BiosignalData& biosignalData_;
+        BiosignalData& biosignalData_;
         double samplingFreq_;
         size_t frameSize_;
         int firstFrame_;
@@ -71,6 +74,7 @@ private:
         typedef std::map<unsigned char, Reader> ReadersMap;
         ReadersMap readers_;
         bool released_;
+        boost::shared_ptr<sql::PreparedStatement> prepStmt_;
 
         static const size_t blobSize_ = 16 * 1024;
         friend class BiosignalData;

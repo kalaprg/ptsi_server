@@ -135,7 +135,8 @@ int main(int argc, char* argv[])
             {
                 buf[idx] = (1.0 + sin(2*M_PI * i / 40.0)) * 127.0;
             }
-            sleep(2);
+            sleep(2);//for monitor
+//            usleep(500000);
             boost::asio::write(socket, boost::asio::buffer(buf));
             boost::asio::read(socket, boost::asio::buffer(buf,2));
             frameNum++;

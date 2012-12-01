@@ -88,16 +88,20 @@ void BiosignalData::prepareStatement()
     }
 }
 
-BiosignalData::DataBlock::DataBlock(const BiosignalData &biosignalData,
+BiosignalData::DataBlock::DataBlock(BiosignalData &biosignalData,
                                     double samplingFreq, size_t frameSize, int type,
-                                    boost::posix_time::ptime startTime)
+                                    boost::posix_time::ptime startTime, bool fork)
     : biosignalData_(biosignalData), samplingFreq_(samplingFreq),
       frameSize_(frameSize), firstFrame_(-1), startTime_(startTime),
       fileName_(boost::filesystem::temp_directory_path()), type_(type),
       prevCount_(0), released_(false)
 {
+    prepStmt_ = biosignalData_.prepStmt_;
     fileName_ /= boost::filesystem::unique_path("ptsi-%%%%-%%%%-%%%%-%%%%");
-    createDataBlock();
+    if(fork)
+        createNewDataBlock();
+    else
+        createDataBlock();
 }
 
 BiosignalData::DataBlock::~DataBlock()
@@ -119,7 +123,10 @@ void BiosignalData::DataBlock::storeByte(unsigned char byte, boost::uint32_t fra
     if(pos < 0)
         return; // too old frames
     if(pos >= (int)blobSize_)
-        return; // TODO fork
+    {
+        DataBlock::pointer newBlock = fork();
+        return newBlock->storeByte(byte, frameNum);
+    }
 
     if(pos < file_.tellp())
     {
@@ -152,8 +159,10 @@ void BiosignalData::DataBlock::storeBytes(const std::vector<unsigned char> &byte
     if(pos < 0)
         return; // too old frames
     if(pos >= (int)blobSize_)
-        return; // TODO fork
-
+    {
+        DataBlock::pointer newBlock = fork();
+        return newBlock->storeBytes(bytes, frameNum);
+    }
     if(pos < file_.tellp())
     {
         int curr_pos = file_.tellp();
@@ -164,8 +173,9 @@ void BiosignalData::DataBlock::storeBytes(const std::vector<unsigned char> &byte
 
         if(bytesLeft < bytes.size())
         {
-            //TODO fork
-            return;
+            DataBlock::pointer newBlock = fork();
+            std::vector<unsigned char> remaining(bytes.begin() + bytesLeft, bytes.end());
+            return newBlock->storeBytes(remaining, frameNum);
         }
         else
         {
@@ -183,12 +193,9 @@ void BiosignalData::DataBlock::storeBytes(const std::vector<unsigned char> &byte
 
         if(bytesLeft < bytes.size())
         {
-            //TODO fork
-            return;
-        }
-        else
-        {
-            file_.seekp(curr_pos, std::ios_base::beg);
+            DataBlock::pointer newBlock = fork();
+            std::vector<unsigned char> remaining(bytes.begin() + bytesLeft, bytes.end());
+            return newBlock->storeBytes(remaining, frameNum);
         }
     }
     else
@@ -198,8 +205,9 @@ void BiosignalData::DataBlock::storeBytes(const std::vector<unsigned char> &byte
         file_.write((const char*)&bytes.front(), std::min(bytesLeft, bytes.size()));
         if(bytesLeft < bytes.size())
         {
-            //TODO fork
-            return;
+            DataBlock::pointer newBlock = fork();
+            std::vector<unsigned char> remaining(bytes.begin() + bytesLeft, bytes.end());
+            return newBlock->storeBytes(remaining, frameNum);
         }
     }
 }
@@ -287,8 +295,9 @@ void BiosignalData::DataBlock::readBytes(unsigned char readerId, std::vector<uns
     }
     size = file_.tellp() - it->second.pos_;
     file_.seekg(it->second.pos_);
-    file_.read((char *)&buffer[offset], std::min(size, buffer.size() - offset));
-    size_t remaining = buffer.size() - offset - size;
+    size_t size2 = std::min(size, buffer.size() - offset);
+    file_.read((char *)&buffer[offset], size2);
+    size_t remaining = buffer.size() - offset - size2;
     if(remaining)
         memset(&buffer[offset + size], 255, remaining);
 
@@ -298,6 +307,38 @@ void BiosignalData::DataBlock::readBytes(unsigned char readerId, std::vector<uns
 void BiosignalData::DataBlock::release()
 {
     released_ = true;
+}
+
+BiosignalData::DataBlock::pointer BiosignalData::DataBlock::fork()
+{
+    biosignalData_.session_.getServer().debugStream_ << "fork" << std::endl;
+    double usecs = blobSize_ / samplingFreq_ * 1e6;
+    boost::posix_time::ptime startTime(startTime_ + boost::posix_time::microseconds(usecs));
+    DataBlock::pointer ptr(new DataBlock(biosignalData_, samplingFreq_, frameSize_, type_, startTime, true));
+
+    int prevCount = 0;
+    prevCount_ = 0;
+    prev_.reset();
+    for(ReadersMap::iterator it = readers_.begin(); it != readers_.end(); ++it)
+    {
+        it->second.prev_ = false;
+        if(it->second.pos_ != 0)
+        {
+            ptr->readers_.insert(
+                        ReadersMap::value_type(it->second.readerId_,
+                                               Reader(it->second.readerId_, true)));
+            ++prevCount;
+        }
+    }
+    if(prevCount)
+    {
+        ptr->prevCount_ = prevCount;
+        ptr->prev_ = biosignalData_.dataBlocks_[type_];
+    }
+
+    closeDataBlock();
+    biosignalData_.dataBlocks_[type_] = ptr;
+    return ptr;
 }
 
 void BiosignalData::DataBlock::createDataBlock()
@@ -319,7 +360,8 @@ void BiosignalData::DataBlock::createDataBlock()
         std::stringstream s;
         s << "SELECT file_path, start_date FROM data "
              "WHERE session_id=" << biosignalData_.session_.getSessionID()
-          << " AND data_type=" << type_ << " AND file_path IS NOT NULL";
+          << " AND data_type=" << type_ << " AND file_path IS NOT NULL "
+             "ORDER BY start_date DESC";
 
         query = s.str();
         boost::scoped_ptr<sql::ResultSet> res(stmt->executeQuery(query));
@@ -410,14 +452,18 @@ void BiosignalData::DataBlock::closeDataBlock()
         s.imbue(std::locale(std::cout.getloc(), new boost::posix_time::time_facet("%Y-%m-%d %H:%M:%S")));
         s << startTime_;
 
+        std::fstream::pos_type oldPos = file_.tellp();
         file_.seekg(0, std::ios_base::beg);
+        file_.seekp(0, std::ios_base::beg);
         file_.exceptions(std::ios_base::goodbit);//disable exceptions
         biosignalData_.prepStmt_->setBlob(1, &file_);
         biosignalData_.prepStmt_->setInt(2, biosignalData_.session_.getSessionID());
         biosignalData_.prepStmt_->setDateTime(3, sql::SQLString(s.str()));
         biosignalData_.prepStmt_->setInt(4, type_);
         biosignalData_.prepStmt_->executeUpdate();
+        file_.clear();
         file_.exceptions(std::ios_base::eofbit | std::ios_base::badbit | std::ios_base::failbit);//reenable exceptions
+        file_.seekp(oldPos);
 
         //TODO maybe throw exception in case of error?
 
@@ -450,7 +496,7 @@ boost::posix_time::ptime BiosignalData::DataBlock::frameNumToTime(boost::uint32_
     if(samples >= blobSize_)
         return ptime(pos_infin);//frame after this data block
 
-    double usecs = samples * samplingFreq_ * 1e-9;
+    double usecs = samples * samplingFreq_ * 1e9;
     return ptime(startTime_ + microseconds(usecs));
 }
 

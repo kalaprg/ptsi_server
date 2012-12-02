@@ -9,25 +9,37 @@
 
 class PTSIServer;
 
-class Connection
-        : public boost::enable_shared_from_this<Connection>
+template<class T>
+class BaseConnection
+        : public boost::enable_shared_from_this<BaseConnection<T> >
 {
 public:
-    typedef boost::shared_ptr<Connection> pointer;
+    typedef boost::shared_ptr<BaseConnection<T> > pointer;
 
     static pointer create(boost::asio::io_service& io_service,
                           PTSIServer &server);
 
-    boost::asio::ip::tcp::socket& socket()
+    virtual boost::asio::ip::tcp::socket &socket()
     {
-        return socket_;
+        return low_socket_;
     }
 
     void start();
 
-    ~Connection();
+    ~BaseConnection();
+
+protected:
+    BaseConnection(boost::asio::io_service& io_service, PTSIServer &server, boost::asio::ssl::context &context);
+    BaseConnection(boost::asio::io_service& io_service, PTSIServer &server);
+
+    T socket_;
+    PTSIServer &server_;
+    std::vector<char> buffer_;
+    std::string hostname_;
+    Session::pointer session_;
+    boost::asio::ip::tcp::socket &low_socket_;
+
 private:
-    Connection(boost::asio::io_service& io_service, PTSIServer &server);
 
     void read_header(const boost::system::error_code &error);
 
@@ -53,12 +65,8 @@ private:
     void readBioSignals(const boost::system::error_code &error);
 
     void readBioSignals2(boost::uint32_t size, const boost::system::error_code &error);
-
-    boost::asio::ip::tcp::socket socket_;
-    PTSIServer &server_;
-    std::vector<char> buffer_;
-    std::string hostname_;
-    Session::pointer session_;
 };
+
+typedef BaseConnection<boost::asio::ip::tcp::socket> Connection;
 
 #endif // CONNECTION_H

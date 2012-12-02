@@ -23,7 +23,7 @@ boost::uint64_t SetPatientPacket::pesel() const
 
 PTSIOptions::PTSIOptions()
     : options_("Config file options"), generalOptions_("General options"),
-      mysqlOptions_("MySQL options")
+      mysqlOptions_("MySQL options"), sslOptions("TLS options")
 {
     using namespace boost::program_options;
     generalOptions_.add_options()
@@ -38,7 +38,12 @@ PTSIOptions::PTSIOptions()
             ("mysql.password", value<std::string> (&mysqlPassword_)->required(), "MySQL password")
             ("mysql.db", value<std::string>(&mysqlDatabase_)->default_value("ptsi"), "MySQL database name");
 
-    options_.add(generalOptions_).add(mysqlOptions_);
+    sslOptions.add_options()
+            ("tls.cert", value<boost::filesystem::path>(&certificateFile_), "server certificate file")
+            ("tls.key", value<boost::filesystem::path>(&rsaKeyFile_), "server private key file")
+            ("tls.keypass", value<std::string>(&keyPassword_)->default_value(""), "private key passphrase");
+
+    options_.add(generalOptions_).add(mysqlOptions_).add(sslOptions);
 }
 
 bool PTSIOptions::parseConfigFile(const boost::filesystem::path &configFile)
@@ -59,6 +64,12 @@ bool PTSIOptions::parseConfigFile(const boost::filesystem::path &configFile)
         if(!port_ && !securePort_)
         {
             std::cerr << "You cannot disable both unsecured and secured connections";
+            return false;
+        }
+
+        if(securePort_ && (!vm_.count("tls.cert") || !vm_.count("tls.key")))
+        {
+            std::cerr << "In order to use TLS you must specify certificate file and public key file!";
             return false;
         }
 
@@ -129,6 +140,21 @@ const std::string &PTSIOptions::getMySQLPassword() const
 const std::string &PTSIOptions::getMySQLDatabase() const
 {
     return mysqlDatabase_;
+}
+
+const boost::filesystem::path &PTSIOptions::getCertificateFile() const
+{
+    return certificateFile_;
+}
+
+const boost::filesystem::path &PTSIOptions::getPKeyFile() const
+{
+    return rsaKeyFile_;
+}
+
+const std::string &PTSIOptions::getPKeyPassphrase() const
+{
+    return keyPassword_;
 }
 
 PTSIOptions globalOptions;

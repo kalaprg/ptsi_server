@@ -22,7 +22,7 @@
 class PTSIServer
 {
 public:
-    PTSIServer(boost::asio::io_service &io_service, unsigned int port,
+    PTSIServer(boost::asio::io_service &io_service,
                std::ostream &errorStream, std::ostream &debugStream);
 
     boost::shared_ptr<sql::Connection> databaseConnection() const;
@@ -47,7 +47,7 @@ private:
     void setupSessions();
 
     boost::asio::ip::tcp::acceptor acceptor_;
-    boost::asio::ip::tcp::acceptor acceptor2_;
+    boost::asio::ip::tcp::acceptor internalAcceptor_;
     std::ostream &debugStream_;
     std::ostream &errorStream_;
 
@@ -56,9 +56,6 @@ private:
     std::map<boost::uint64_t, Session::pointer> peselSessionMap_;
     std::map<std::string, Session::pointer> deviceSessionMap_;
 
-    static std::string mysql_user_;
-    static std::string mysql_pass_;
-    static std::string mysql_db_;
     friend class Session;
     friend class BiosignalData;
     friend class Connection;

@@ -79,8 +79,6 @@ bool Session::associateWithPatient(const boost::uint64_t &pesel,
 
 bool Session::setupTransmission(const TransmissionSetup &setup)
 {
-    //TODO
-    //if already setup, create new session(in db) and flush blobs
     if(!isAssociated() || !setup.ecgFrameSize_ || !setup.samplingFrequency_)
         return false;
 
@@ -137,8 +135,11 @@ bool Session::setupTransmission(const TransmissionSetup &setup)
             data_ = newData;
             return true;
         }
-
-        return false;
+        else
+        {
+            associateWithPatient(pesel_, deviceName_);//close old, and create new session
+            return setupTransmission(setup);
+        }
     }
 }
 
@@ -182,12 +183,12 @@ void Session::closeSession()
                 return;
             }
 
+            data_.reset();//flush blobs
             session_id_ = -1;
             pesel_ = 0;
             deviceName_ = "";
             samplingFrequency_ = 0;
             frameSize_ = 0;
-
         }
         catch(sql::SQLException &e)
         {

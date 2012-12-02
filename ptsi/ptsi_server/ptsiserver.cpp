@@ -8,27 +8,34 @@
 #include <cppconn/connection.h>
 #include <cppconn/statement.h>
 #include <cppconn/resultset.h>
+#include "common.h"
 #include "ptsiserver.h"
 
-std::string PTSIServer::mysql_user_ = "ptsi_server";
-std::string PTSIServer::mysql_pass_ = "ptsipass";
-std::string PTSIServer::mysql_db_ = "ptsi";
-
-PTSIServer::PTSIServer(boost::asio::io_service &io_service, unsigned int port,
+PTSIServer::PTSIServer(boost::asio::io_service &io_service,
                        std::ostream &errorStream, std::ostream &debugStream)
-    : acceptor_(io_service, boost::asio::ip::tcp::endpoint(
-                    boost::asio::ip::tcp::v4(), port)),
-      acceptor2_(io_service, boost::asio::ip::tcp::endpoint(
-                     boost::asio::ip::tcp::v4(), port + 1)),
+    : acceptor_(io_service), internalAcceptor_(io_service, boost::asio::ip::tcp::endpoint(
+                                                   boost::asio::ip::tcp::v4(), globalOptions.getInternalPort())),
       debugStream_(debugStream), errorStream_(errorStream)
 {
+    if(globalOptions.isUnsecuredConnectionsEnabled())
+    {
+        boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), globalOptions.getPort());
+        acceptor_.open(endpoint.protocol());
+        acceptor_.set_option(boost::asio::socket_base::reuse_address(true));
+        acceptor_.bind(endpoint);
+        acceptor_.listen();
+    }
+
     if(!initMySQL())
     {
         errorStream_ << "Error connecting to database, exiting" << std::endl;
         io_service.stop();
+        return;
     }
     setupSessions();
-    start_accept();
+    if(globalOptions.isUnsecuredConnectionsEnabled())
+        start_accept();
+
     start_acceptInternal();
 }
 
@@ -50,11 +57,11 @@ void PTSIServer::start_accept()
 void PTSIServer::start_acceptInternal()
 {
     InternalConnection::pointer internalConnection =
-            InternalConnection::create(acceptor2_.get_io_service(), *this);
+            InternalConnection::create(internalAcceptor_.get_io_service(), *this);
 
-    acceptor2_.async_accept(internalConnection->socket(),
-                            boost::bind(&PTSIServer::handle_acceptInternal, this, internalConnection,
-                                        boost::asio::placeholders::error));
+    internalAcceptor_.async_accept(internalConnection->socket(),
+                                   boost::bind(&PTSIServer::handle_acceptInternal, this, internalConnection,
+                                               boost::asio::placeholders::error));
 }
 
 void PTSIServer::handle_accept(Connection::pointer new_connection,
@@ -185,14 +192,14 @@ bool PTSIServer::initMySQL()
         connection_.reset();
         sql::mysql::MySQL_Driver *driver = sql::mysql::get_mysql_driver_instance();
         sql::ConnectOptionsMap options;
-        options["hostName"] = sql::SQLString("localhost");
-        options["userName"] = sql::SQLString(mysql_user_);
-        options["password"] = sql::SQLString(mysql_pass_);
+        options["hostName"] = sql::SQLString(globalOptions.getMySQLServer());
+        options["userName"] = sql::SQLString(globalOptions.getMySQLUser());
+        options["password"] = sql::SQLString(globalOptions.getMySQLPassword());
         options["CLIENT_MULTI_STATEMENTS"] = true;
         boost::shared_ptr<sql::Connection> connection(driver->connect(options));
 
         boost::scoped_ptr<sql::Statement> stmt(connection->createStatement());
-        stmt->execute("USE " + mysql_db_);
+        stmt->execute("USE " + globalOptions.getMySQLDatabase());
 
         connection_ = connection;
         return true;

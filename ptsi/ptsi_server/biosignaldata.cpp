@@ -30,9 +30,25 @@ BiosignalData::BiosignalData(const Session &session)
 
 void BiosignalData::storePacket(const DataPacket &packet)
 {
-    dataBlocks_[OXYGEN]->storeByte(packet.saturation_, packet.frameNumber_);
-    dataBlocks_[PULSE]->storeByte(packet.pulse_, packet.frameNumber_);
-    dataBlocks_[ECG]->storeBytes(packet.ecg_, packet.frameNumber_);
+    try
+    {
+        session_.getServer().errorStream_ << "Storing packet...";
+        dataBlocks_[OXYGEN]->storeByte(packet.saturation_, packet.frameNumber_);
+        session_.getServer().errorStream_ << " OXY";
+        dataBlocks_[PULSE]->storeByte(packet.pulse_, packet.frameNumber_);
+        session_.getServer().errorStream_ << " PLS";
+        dataBlocks_[ECG]->storeBytes(packet.ecg_, packet.frameNumber_);
+        session_.getServer().errorStream_ << " ECG";
+        session_.getServer().errorStream_ << " OK\n";
+    }
+    catch(std::exception& e)
+    {
+        session_.getServer().errorStream_ << "Exception:" << e.what() << "\n";
+    }
+    catch(...)
+    {
+        session_.getServer().errorStream_ << "Unexpected exception\n";
+    }
 }
 
 size_t BiosignalData::getSize(unsigned char type, unsigned char readerId)
@@ -92,7 +108,7 @@ BiosignalData::DataBlock::DataBlock(BiosignalData &biosignalData,
                                     double samplingFreq, size_t frameSize, int type,
                                     boost::posix_time::ptime startTime, bool fork)
     : biosignalData_(biosignalData), samplingFreq_(samplingFreq),
-      frameSize_(frameSize), firstFrame_(-1), startTime_(startTime),
+      frameSize_(frameSize), firstFrame_(-1), firstFrameSize_(-1), startTime_(startTime),
       fileName_(boost::filesystem::temp_directory_path()), type_(type),
       prevCount_(0), released_(false)
 {
@@ -117,12 +133,15 @@ BiosignalData::DataBlock::~DataBlock()
 void BiosignalData::DataBlock::storeByte(unsigned char byte, boost::uint32_t frameNum)
 {
     if(firstFrame_ == -1)
+    {
         firstFrame_ = frameNum;
+        firstFrameSize_ = frameSize_;
+    }
 
     int pos = frameNumToPos(frameNum);
     if(pos < 0)
         return; // too old frames
-    if(pos >= (int)blobSize_)
+    if(pos >= (int)globalOptions.getBlobSize())
     {
         DataBlock::pointer newBlock = fork();
         return newBlock->storeByte(byte, frameNum);
@@ -152,63 +171,92 @@ void BiosignalData::DataBlock::storeByte(unsigned char byte, boost::uint32_t fra
 
 void BiosignalData::DataBlock::storeBytes(const std::vector<unsigned char> &bytes, boost::uint32_t frameNum)
 {
-    if(firstFrame_ == -1)
-        firstFrame_ = frameNum;
-
-    int pos = frameNumToPos(frameNum);
-    if(pos < 0)
-        return; // too old frames
-    if(pos >= (int)blobSize_)
+    int pos;
+    int stage = -1;
+    try
     {
-        DataBlock::pointer newBlock = fork();
-        return newBlock->storeBytes(bytes, frameNum);
-    }
-    if(pos < file_.tellp())
-    {
-        int curr_pos = file_.tellp();
-        file_.seekp(pos, std::ios_base::beg);
-
-        size_t bytesLeft = blobSize_ - curr_pos;
-        file_.write((const char*)&bytes.front(), bytesLeft);
-
-        if(bytesLeft < bytes.size())
+        if(firstFrame_ == -1)
         {
+            firstFrame_ = frameNum;
+            firstFrameSize_ = bytes.size();
+        }
+
+        pos = frameNumToPos(frameNum);
+
+        biosignalData_.session_.getServer().errorStream_ << " frameNum:"
+                                                         << frameNum
+                                                         << " pos:" << pos
+                                                         << std::endl;
+        stage = 1;
+        if(pos < 0)
+            return; // too old frames
+        if(pos >= (int)globalOptions.getBlobSize())
+        {
+            stage = 2;
             DataBlock::pointer newBlock = fork();
-            std::vector<unsigned char> remaining(bytes.begin() + bytesLeft, bytes.end());
-            return newBlock->storeBytes(remaining, frameNum);
+            return newBlock->storeBytes(bytes, frameNum);
+        }
+        if(pos < file_.tellp())
+        {
+            stage = 3;
+            int curr_pos = file_.tellp();
+            biosignalData_.session_.getServer().errorStream_ << "seeking";
+            file_.seekp(pos, std::ios_base::beg);
+
+            size_t bytesLeft = globalOptions.getBlobSize() - curr_pos;
+            biosignalData_.session_.getServer().errorStream_ << "writing";
+            file_.write((const char*)&bytes.front(), bytesLeft);
+
+            if(bytesLeft < bytes.size())
+            {
+                DataBlock::pointer newBlock = fork();
+                std::vector<unsigned char> remaining(bytes.begin() + bytesLeft, bytes.end());
+                return newBlock->storeBytes(remaining, frameNum);
+            }
+            else
+            {
+                file_.seekp(curr_pos, std::ios_base::beg);
+            }
+        }
+        else if(pos > file_.tellp())
+        {
+            stage = 4;
+            int curr_pos = file_.tellp();
+            for(int i = curr_pos; i < pos; ++i)
+                file_.put(255);//fill with no signal values
+
+            size_t bytesLeft = globalOptions.getBlobSize() - curr_pos;
+            file_.write((const char*)&bytes.front(), bytesLeft);
+
+            if(bytesLeft < bytes.size())
+            {
+                DataBlock::pointer newBlock = fork();
+                std::vector<unsigned char> remaining(bytes.begin() + bytesLeft, bytes.end());
+                return newBlock->storeBytes(remaining, frameNum);
+            }
         }
         else
         {
-            file_.seekp(curr_pos, std::ios_base::beg);
+            stage = 5;
+            int curr_pos = file_.tellp();
+            size_t bytesLeft = globalOptions.getBlobSize() - curr_pos;
+            file_.write((const char*)&bytes.front(), std::min(bytesLeft, bytes.size()));
+            if(bytesLeft < bytes.size())
+            {
+                DataBlock::pointer newBlock = fork();
+                std::vector<unsigned char> remaining(bytes.begin() + bytesLeft, bytes.end());
+                return newBlock->storeBytes(remaining, frameNum);
+            }
         }
     }
-    else if(pos > file_.tellp())
+    catch(std::ios_base::failure &e)
     {
-        int curr_pos = file_.tellp();
-        for(int i = curr_pos; i < pos; ++i)
-            file_.put(255);//fill with no signal values
-
-        size_t bytesLeft = blobSize_ - curr_pos;
-        file_.write((const char*)&bytes.front(), bytesLeft);
-
-        if(bytesLeft < bytes.size())
-        {
-            DataBlock::pointer newBlock = fork();
-            std::vector<unsigned char> remaining(bytes.begin() + bytesLeft, bytes.end());
-            return newBlock->storeBytes(remaining, frameNum);
-        }
-    }
-    else
-    {
-        int curr_pos = file_.tellp();
-        size_t bytesLeft = blobSize_ - curr_pos;
-        file_.write((const char*)&bytes.front(), std::min(bytesLeft, bytes.size()));
-        if(bytesLeft < bytes.size())
-        {
-            DataBlock::pointer newBlock = fork();
-            std::vector<unsigned char> remaining(bytes.begin() + bytesLeft, bytes.end());
-            return newBlock->storeBytes(remaining, frameNum);
-        }
+        biosignalData_.session_.getServer().errorStream_ << "Exception:" << e.what() << std::endl
+                                                         << "TELLP:" << file_.tellp() << " POS:" << pos
+                                                         << " FRAMENUM:" << frameNum << " STAGE" << stage
+                                                         << std::endl << "EOF:" << (file_.eof() ? "true" : "false")
+                                                         << std::endl << "BAD:" << (file_.bad() ? "true" : "false")
+                                                         << std::endl << "FAIL:" << (file_.fail() ? "true" : "false");
     }
 }
 
@@ -312,7 +360,7 @@ void BiosignalData::DataBlock::release()
 BiosignalData::DataBlock::pointer BiosignalData::DataBlock::fork()
 {
     biosignalData_.session_.getServer().debugStream_ << "fork" << std::endl;
-    double usecs = blobSize_ / samplingFreq_ * 1e6;
+    double usecs = globalOptions.getBlobSize() / samplingFreq_ * 1e6;
     boost::posix_time::ptime startTime(startTime_ + boost::posix_time::microseconds(usecs));
     DataBlock::pointer ptr(new DataBlock(biosignalData_, samplingFreq_, frameSize_, type_, startTime, true));
 
@@ -479,30 +527,17 @@ void BiosignalData::DataBlock::closeDataBlock()
     catch(sql::SQLException &e)
     {
         biosignalData_.session_.getServer().errorStream_ << "Error executing prepared statement:"
-                                          << e.what() << std::endl;
+                                                         << e.what() << std::endl;
     }
-}
-
-boost::posix_time::ptime BiosignalData::DataBlock::frameNumToTime(boost::uint32_t frameNum) const
-{
-    using namespace boost::posix_time;
-    using namespace boost::date_time;
-    assert(firstFrame_ != -1);//this should be set before calling this method
-    int offset = frameNum - firstFrame_;
-    if(offset < 0)
-        return ptime(neg_infin);//frame before this data block
-
-    size_t samples = offset * frameSize_;
-    if(samples >= blobSize_)
-        return ptime(pos_infin);//frame after this data block
-
-    double usecs = samples * samplingFreq_ * 1e9;
-    return ptime(startTime_ + microseconds(usecs));
 }
 
 int BiosignalData::DataBlock::frameNumToPos(boost::uint32_t frameNum) const
 {
-    int offset = frameNum - firstFrame_;
+    assert(firstFrame_ != -1);
+    if(frameNum == (boost::uint32_t) firstFrame_)
+        return 0;
+    int offset = frameNum - (firstFrame_ + 1);
     size_t samples = offset * frameSize_;
+    samples += firstFrameSize_;
     return samples;
 }

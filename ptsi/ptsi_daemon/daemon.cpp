@@ -8,10 +8,9 @@
 #include <fstream>
 #include <boost/asio.hpp>
 #include <boost/program_options.hpp>
-#include "daemon.h"
+#include "common.h"
 #include "ptsiserver.h"
-
-namespace po = boost::program_options;
+#include "daemon.h"
 
 const char Daemon::pidFileName_[] = "/var/run/ptsi_daemon.pid";
 
@@ -33,53 +32,46 @@ Daemon::~Daemon()
 
 int Daemon::start(int argc, char **argv)
 {
-    unsigned int port;
-    // Declare the supported options.
-    po::options_description visible("Available options");
-    visible.add_options()
+    std::string configFile;
+    boost::program_options::options_description cmdlineOptions("Available options");
+    cmdlineOptions.add_options()
             ("help,h", "produce this help message")
             ("stop,s", "stops daemon")
-            ("restart,r", "restarts daemon");
-    po::options_description hidden("Hidden options");
-    hidden.add_options()
-            ("port", po::value<unsigned int>(&port)->default_value(40000),
-             "port number");
+            ("restart,r", "restarts daemon")
+            ("config,c", boost::program_options::value<std::string>(&configFile)->default_value("ptsi.cfg"), "config file");
 
-    po::positional_options_description p;
-    p.add("port", -1);
-
-    po::options_description cmdline_options;
-    cmdline_options.add(visible).add(hidden);
-
-    po::variables_map vm;
+    boost::program_options::variables_map vm;
     try
     {
-        po::store(po::command_line_parser(argc, argv).
-                  options(cmdline_options).positional(p).run(), vm);
-        po::notify(vm);
+        boost::program_options::store(
+                    boost::program_options::parse_command_line(argc, argv, cmdlineOptions), vm);
+        boost::program_options::notify(vm);
     }
     catch(std::exception &e)
     {
         std::cerr << e.what() << std::endl;
-        std::cerr << "Usage: ptsi_daemon [options] [port]" << std::endl;
-        std::cerr << visible << std::endl;
-        const po::option_description &o = cmdline_options.find("port", false);
-        std::cerr << "  port\t\t\t" << o.description() << std::endl;
+        std::cerr << "Usage: ptsi_daemon [options]" << std::endl;
+        std::cerr << cmdlineOptions << std::endl;
+        globalOptions.printUsage(std::cerr);
         return EXIT_FAILURE;
     }
     if(vm.count("help"))
     {
-        std::cerr << "Usage: ptsi_daemon [options] [port]" << std::endl;
-        std::cerr << visible << std::endl;
-        const po::option_description &o = cmdline_options.find("port", false);
-        std::cerr << "  port\t\t\t" << o.description() << std::endl;
+        std::cerr << "Usage: ptsi_daemon [options]" << std::endl;
+        std::cerr << cmdlineOptions << std::endl;
+        globalOptions.printUsage(std::cerr);
         return EXIT_SUCCESS;
     }
+
     if(vm.count("stop"))
     {
         killDaemon();
         return EXIT_SUCCESS;
     }
+
+    if(!globalOptions.parseConfigFile(configFile))
+        return EXIT_FAILURE;
+
     if(vm.count("restart"))
     {
         if(!killDaemon())
@@ -100,7 +92,7 @@ int Daemon::start(int argc, char **argv)
         // Initialise the server before becoming a daemon. If the process is
         // started from a shell, this means any errors will be reported back to the
         // user.
-        PTSIServer server(io_service, port, lerrlog_, ldbglog_);
+        PTSIServer server(io_service, lerrlog_, ldbglog_);
 
         // Register signal handlers so that the daemon may be shut down. You may
         // also want to register for other signals, such as SIGHUP to trigger a

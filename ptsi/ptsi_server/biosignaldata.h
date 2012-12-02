@@ -58,13 +58,13 @@ private:
         void createNewDataBlock();
         void closeDataBlock();
 
-        boost::posix_time::ptime frameNumToTime(boost::uint32_t frameNum) const;
         int frameNumToPos(boost::uint32_t frameNum) const;
 
         BiosignalData& biosignalData_;
         double samplingFreq_;
         size_t frameSize_;
         int firstFrame_;
+        size_t firstFrameSize_;
         boost::posix_time::ptime startTime_;
         boost::filesystem::path fileName_;
         std::fstream file_;
@@ -76,7 +76,6 @@ private:
         bool released_;
         boost::shared_ptr<sql::PreparedStatement> prepStmt_;
 
-        static const size_t blobSize_ = 16 * 1024;
         friend class BiosignalData;
     };
     void prepareStatement();

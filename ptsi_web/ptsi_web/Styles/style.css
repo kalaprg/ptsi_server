@@ -1,0 +1,211 @@
+﻿body
+{
+    background-color: White;
+    text-align: center;
+}
+
+
+
+
+a
+{
+    color: Blue;
+    text-decoration: none;  
+}
+
+a:hover
+{
+    color: Aqua;
+    text-decoration: none;  
+}
+
+
+form
+{
+    text-align: center;
+}
+
+body.Frame
+{
+    margin: 0px;
+    text-align: center;
+}
+
+canvas
+{
+    border-style: none;
+    border-bottom-style: none;
+    border-top-style: none;
+    border-width: 1px;
+}
+
+iframe
+{
+    border-style: solid;
+    border-width: 1px;
+    padding: 0px;
+    margin: 0px;
+}
+
+div.Container
+{
+    text-align: center;
+    margin: 0px auto;
+    padding: 0px;
+    border: none;
+
+}
+
+div.NameLabel
+{
+    border-width: 1px;
+    border-bottom-style: solid;
+    margin: 0px;
+}
+
+div.FrameMain
+{
+    margin: 0px;
+}
+
+div.ValueViewL
+{
+    text-align: center;
+    font-size: 200%;
+    width: 33%;
+    border-left: none;
+    border-top: solid;
+    border-right: none;
+    border-bottom: solid;
+    border-width: 1px;
+    float: left;
+    
+}
+
+div.ValueViewM
+{
+    text-align: center;
+    font-size: 200%;
+    width: 33%;
+    border-left: solid;
+    border-top: solid;
+    border-right: solid;
+    border-bottom: solid;
+    border-width: 1px;
+    float: left;
+    
+}
+
+div.ValueViewR
+{
+    text-align: center;
+    font-size: 200%;
+    width: 33%;
+    border-left: none;
+    border-top: solid;
+    border-right: none;
+    border-bottom: solid;
+    border-width: 1px;
+    float: right;
+}
+
+div.SmallMain
+{
+    width: 600px;
+    margin: 0px auto;
+}
+
+div.SmallMainInner
+{
+    border-style: solid;
+    border-width: 1px;
+    border-color: #0F4BFF;
+}
+
+div.SmallHeader
+{
+    font-weight: bold;
+    font-variant: small-caps;
+    
+    background-color: #33CCFF;
+    
+    border-bottom-style: solid;
+    border-bottom-color: #0F4BFF;
+    border-bottom-width: 1px;
+}
+
+div.FormElement
+{
+  clear: both;
+  padding: 5px;
+}
+
+
+div.FormElement span.FormLabel
+{
+  float: left;
+  width: 48%;
+  text-align: right;
+}
+
+div.FormElement span.FormValue
+{
+  float: right;
+  width: 48%;
+  text-align: left;
+}
+
+input[type="submit"]
+{
+    border-style: solid;
+    border-width: 1px;
+    border-top-color: #0F4BFF;
+    border-left-color: #0F4BFF;
+    border-bottom-color: #001D75;
+    border-right-color: #001D75;
+    background-color: #33CCFF;
+}
+
+input[type="submit"]:hover
+{
+    border-style: solid;
+    border-width: 1px;
+    border-top-color: #0F4BFF;
+    border-left-color: #0F4BFF;
+    border-bottom-color: #001D75;
+    border-right-color: #001D75;
+    background-color: #80DFFF;
+}
+
+input[type="submit"]:active
+{
+    border-style: solid;
+    border-width: 1px;
+    border-bottom-color: #0F4BFF;
+    border-right-color: #0F4BFF;
+    border-left-color: #001D75;
+    border-top-color: #001D75;
+}
+
+input.FormSubmit
+{
+    width: 240px;
+}
+
+
+div.Header
+{
+    text-align: right;
+    padding: 10px;
+}
+
+div.Main
+{
+    text-align: center;
+}
+
+div.HorizontalScroll
+{
+    overflow: scroll;
+    overflow-x: scroll;
+}

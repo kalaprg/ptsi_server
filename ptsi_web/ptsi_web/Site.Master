@@ -1,0 +1,27 @@
+﻿<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="Site.master.cs" Inherits="ptsi_web.SiteMaster" %>
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//PL" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="pl">
+<head runat="server">
+    <title></title>
+    <link href="~/Styles/style.css" rel="stylesheet" type="text/css" />
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <script src="Scripts/webgl-utils.js" type="text/javascript"></script>
+    <script src="Scripts/webgl.js" type="text/javascript"></script>
+    <script src="Scripts/getdata.js" type="text/javascript"></script>
+    <asp:ContentPlaceHolder ID="HeadContent" runat="server">
+    </asp:ContentPlaceHolder>
+</head>
+<body>
+    <div class="Header">
+        <div style="float:left">Dzisiejsza data: <asp:Label ID="DateLabel" runat="server"></asp:Label></div>
+        <asp:Panel ID="PanelUserLogged" runat="server" style="float:right"> Użytkownik: <asp:Label ID="UserPanel" runat="server"></asp:Label> <a href="logoutpage.aspx">Wyloguj</a>
+        </asp:Panel>
+        <asp:Panel ID="PanelUserNotLogged" runat="server" style="float:right"> <a href="loginpage.aspx">Zaloguj</a>
+        </asp:Panel>
+    </div>
+    <div class="Main">
+        <asp:ContentPlaceHolder id="MainContent" runat="server"></asp:ContentPlaceHolder>
+    </div>
+</body>
+</html>

@@ -1,0 +1,1 @@
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="patientcurrentdata.aspx.cs" Inherits="ptsi_web.patientcurrentdata" %>

@@ -1,0 +1,6 @@
+E:\Studia\Semestr7\PTSI\L\git\ptsi_server\ptsi_web\ptsi_web\bin\ptsi_web.dll
+E:\Studia\Semestr7\PTSI\L\git\ptsi_server\ptsi_web\ptsi_web\bin\ptsi_web.pdb
+E:\Studia\Semestr7\PTSI\L\git\ptsi_server\ptsi_web\ptsi_web\obj\Debug\ResolveAssemblyReference.cache
+E:\Studia\Semestr7\PTSI\L\git\ptsi_server\ptsi_web\ptsi_web\obj\Debug\ptsi_web.dll
+E:\Studia\Semestr7\PTSI\L\git\ptsi_server\ptsi_web\ptsi_web\obj\Debug\ptsi_web.pdb
+E:\Studia\Semestr7\PTSI\L\git\ptsi_server\ptsi_web\ptsi_web\bin\MySql.Data.dll

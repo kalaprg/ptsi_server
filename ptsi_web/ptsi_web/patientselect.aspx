@@ -5,7 +5,7 @@
     <div class="Main">
     <div class=SmallMain><div class=SmallMainInner>
     <div class=SmallHeader> Lista pacjentów: </div>
-    <div>
+    <div style="padding: 10px">
     <asp:Repeater ID="PatientSelectRepeater" runat="server">
         <HeaderTemplate>
             <table align="center">

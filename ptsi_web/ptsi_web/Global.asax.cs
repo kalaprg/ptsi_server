@@ -5,7 +5,6 @@ using System.Web;
 using System.Web.Security;
 using System.Web.SessionState;
 
-using System.Xml;
 
 namespace ptsi_web
 {
@@ -14,6 +13,10 @@ namespace ptsi_web
 
         public static ConfigParser parser;
         public static DataReader.DataSource dataSource;
+        public static string filePathECG;
+        public static string filePathPulse;
+        public static string filePathOxygen;
+        public static string rootPath;
 
         //private static PatientData p0 = new PatientData("Andrzej", "Kmicic",
         //    44051401458, DataReader.DataSource.File);
@@ -33,6 +36,13 @@ namespace ptsi_web
         void Application_Start(object sender, EventArgs e)
         {
             parser = new ConfigParser(Server.MapPath("config.cfg"));
+
+
+            rootPath = Server.MapPath("/");
+            filePathECG = Server.MapPath("randomdata/ecg.txt");
+            filePathPulse = Server.MapPath("randomdata/pulse.txt");
+            filePathOxygen = Server.MapPath("randomdata/oxygen.txt");
+
 
             string ds = parser.GetValue("other", "datasource");
 
@@ -67,6 +77,7 @@ namespace ptsi_web
             // Note: The Session_End event is raised only when the sessionstate mode
             // is set to InProc in the Web.config file. If session mode is set to StateServer 
             // or SQLServer, the event is not raised.
+            
         }
 
         void SetDataSource(string ds_)

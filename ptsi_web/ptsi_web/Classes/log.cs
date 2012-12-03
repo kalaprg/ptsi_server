@@ -10,7 +10,7 @@ namespace ptsi_web
         private string path;
 
         public Log() {}
-        public Log(string path_) { path = path_; }
+        public Log(string path_) { path = Global.rootPath+"/"+path_; }
 
         void SetPath(string path_) {path = path_;}
         string GetPath() { return path; }

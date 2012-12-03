@@ -22,6 +22,33 @@ namespace ptsi_web {
         protected global::System.Web.UI.WebControls.ContentPlaceHolder HeadContent;
         
         /// <summary>
+        /// form1 control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlForm form1;
+        
+        /// <summary>
+        /// ShowUser control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label ShowUser;
+        
+        /// <summary>
+        /// UserPanel control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label UserPanel;
+        
+        /// <summary>
         /// DateLabel control.
         /// </summary>
         /// <remarks>
@@ -37,16 +64,7 @@ namespace ptsi_web {
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Panel PanelUserLogged;
-        
-        /// <summary>
-        /// UserPanel control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label UserPanel;
+        protected global::System.Web.UI.WebControls.Label PanelUserLogged;
         
         /// <summary>
         /// PanelUserNotLogged control.
@@ -55,7 +73,7 @@ namespace ptsi_web {
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Panel PanelUserNotLogged;
+        protected global::System.Web.UI.WebControls.Label PanelUserNotLogged;
         
         /// <summary>
         /// MainContent control.

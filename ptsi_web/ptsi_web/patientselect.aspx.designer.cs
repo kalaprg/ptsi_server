@@ -10,15 +10,24 @@
 namespace ptsi_web {
     
     
-    public partial class _Default {
+    public partial class patientselect {
         
         /// <summary>
-        /// result control.
+        /// PatientSelectRepeater control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label result;
+        protected global::System.Web.UI.WebControls.Repeater PatientSelectRepeater;
+        
+        /// <summary>
+        /// ApplyButton control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button ApplyButton;
     }
 }

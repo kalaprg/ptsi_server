@@ -4,9 +4,6 @@
     text-align: center;
 }
 
-
-
-
 a
 {
     color: Blue;
@@ -195,8 +192,26 @@ input.FormSubmit
 
 div.Header
 {
-    text-align: right;
     padding: 10px;
+    margin: 0px;
+}
+
+div.HeaderLeft
+{
+    text-align: left;
+    margin: -10px;
+    padding: 0px;
+    float: left;
+    width: 50%;
+}
+
+div.HeaderRight
+{
+    text-align: right;
+    margin: -10px;
+    padding: 0px;
+    float: right;
+    width: 50%;
 }
 
 div.Main
@@ -208,4 +223,36 @@ div.HorizontalScroll
 {
     overflow: scroll;
     overflow-x: scroll;
+}
+
+table
+{
+    border-top-style: solid;
+    border-left-style: solid;
+    border-width: 1px;
+    border-color: #0F4BFF;
+    padding: 0px;
+    border-collapse: collapse;
+}
+
+tr
+{
+    padding: 0px;
+}
+
+tr.Header
+{
+    font-weight: bold;
+    font-variant: small-caps;
+    
+    background-color: #33CCFF;
+}
+
+td
+{
+    border-bottom-style: solid;
+    border-right-style: solid;
+    border-width: 1px;
+    border-color: #0F4BFF;
+    padding: 5px;
 }

@@ -15,12 +15,14 @@ namespace ptsi_web
 
             if (logged)
             {
+                ShowUser.Visible = true;
                 PanelUserLogged.Visible = true;
                 PanelUserNotLogged.Visible = false;
                 UserPanel.Text = (string)Session["UserName"];
             }
             else
             {
+                ShowUser.Visible = false;
                 PanelUserLogged.Visible = false;
                 PanelUserNotLogged.Visible = true;
 

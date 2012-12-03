@@ -59,13 +59,11 @@
     <Content Include="patientcurrentdata.aspx" />
     <Content Include="patientframe.aspx" />
     <Content Include="patienthistory.aspx" />
+    <Content Include="patientselect.aspx" />
     <Content Include="patientview.aspx" />
-    <Content Include="Scripts\fragmentshader.js" />
     <Content Include="Scripts\getdata.js" />
-    <Content Include="Scripts\vertexshader.js" />
     <Content Include="Scripts\webgl-utils.js" />
     <Content Include="Scripts\webgl.js" />
-    <Content Include="Styles\Site.css" />
     <Content Include="Default.aspx" />
     <Content Include="Global.asax" />
     <Content Include="Scripts\jquery-1.4.1-vsdoc.js" />
@@ -131,6 +129,13 @@
     </Compile>
     <Compile Include="patienthistory.aspx.designer.cs">
       <DependentUpon>patienthistory.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="patientselect.aspx.cs">
+      <DependentUpon>patientselect.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="patientselect.aspx.designer.cs">
+      <DependentUpon>patientselect.aspx</DependentUpon>
     </Compile>
     <Compile Include="patientview.aspx.cs">
       <DependentUpon>patientview.aspx</DependentUpon>

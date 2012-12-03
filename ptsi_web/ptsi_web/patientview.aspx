@@ -8,7 +8,7 @@
 
         <asp:Repeater ID="iframeRepeat" runat="server">
         <ItemTemplate>
-            <iframe src="patientframe.aspx?id=<%#Container.ItemIndex%>" width="<%=w%>" height="<%=h%>"></iframe>
+            <iframe src="patientframe.aspx?id=<%#Container.DataItem%>" width="<%=w%>" height="<%=h%>"></iframe>
         </ItemTemplate>
         </asp:Repeater>
 

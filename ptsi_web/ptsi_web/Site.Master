@@ -13,15 +13,20 @@
     </asp:ContentPlaceHolder>
 </head>
 <body>
+<form id="form1" runat="server">
     <div class="Header">
-        <div style="float:left">Dzisiejsza data: <asp:Label ID="DateLabel" runat="server"></asp:Label></div>
-        <asp:Panel ID="PanelUserLogged" runat="server" style="float:right"> Użytkownik: <asp:Label ID="UserPanel" runat="server"></asp:Label> <a href="logoutpage.aspx">Wyloguj</a>
-        </asp:Panel>
-        <asp:Panel ID="PanelUserNotLogged" runat="server" style="float:right"> <a href="loginpage.aspx">Zaloguj</a>
-        </asp:Panel>
+        <div class="HeaderLeft"><asp:Label ID="ShowUser" runat="server"><b>Użytkownik:</b> </asp:Label><asp:Label ID="UserPanel" runat="server"></asp:Label> <b>Dzisiejsza data: </b><asp:Label ID="DateLabel" runat="server"></asp:Label></div>
+        <div class="HeaderRight">
+        <a href="Default.aspx">Strona główna</a>
+        <asp:Label ID="PanelUserLogged" runat="server" CssClass="HeaderRight">  <a href="logoutpage.aspx">Wyloguj</a>
+        </asp:Label>
+        <asp:Label ID="PanelUserNotLogged" runat="server" CssClass="HeaderRight"> <a href="loginpage.aspx">Zaloguj</a>
+        </asp:Label>
+        </div>
     </div>
     <div class="Main">
         <asp:ContentPlaceHolder id="MainContent" runat="server"></asp:ContentPlaceHolder>
     </div>
+</form>
 </body>
 </html>

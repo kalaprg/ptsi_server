@@ -2,7 +2,7 @@
     AutoEventWireup="true" CodeBehind="loginpage.aspx.cs" Inherits="ptsi_web.loginpage" %>
 
 <asp:Content ID="MainContentData" runat="server" ContentPlaceHolderID="MainContent">
-<form id="form1" runat="server">
+
     <div class="SmallMain"> <div class="SmallMainInner">
         <div class="SmallHeader"> Logowanie:</div>
         <div>
@@ -35,5 +35,4 @@
             <asp:Label ID="result" runat="server"> </asp:Label>
         </div>
     </div> </div>
-</form>
 </asp:Content>

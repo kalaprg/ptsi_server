@@ -50,7 +50,12 @@ namespace ptsi_web
                 List<int> patientList = new List<int>(patientCount);
 
                 for (int i = 0; i < patientCount; ++i)
-                { patientList.Add(i); }
+                {
+                    if (PatientData.GetByIndex(i).observation)
+                    {
+                        patientList.Add(i);
+                    }
+                }
 
                 iframeRepeat.DataSource = patientList;
                 iframeRepeat.DataBind();

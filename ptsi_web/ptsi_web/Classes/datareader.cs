@@ -95,11 +95,10 @@ namespace ptsi_web
 
     public class DataReaderFile : DataReader
     {
-        private const string defaultFile = "E:/Studia/Semestr7/PTSI/L/git/ptsi_server/randomdata/data1.txt";
         private string filename;
         private long filePointer;
 
-        public DataReaderFile(UInt64 PESEL_, DataType dataType_, string filename_ = defaultFile)
+        public DataReaderFile(UInt64 PESEL_, DataType dataType_, string filename_)
             : base(PESEL_, dataType_)
         {
             filename = filename_;

@@ -12,7 +12,7 @@ namespace ptsi_web
 
         public static PatientData GetByIndex(int index) { return list[index]; }
         public static int GetCount() {return count;}
-
+        public static List<PatientData> GetList() { return new List<PatientData>(list); }
 
         private int ID;
         private DataViewer dataViewerPulse = new DataViewer();
@@ -21,9 +21,10 @@ namespace ptsi_web
         private DataReader dataReaderPulse;
         private DataReader dataReaderOxygen;
         private DataReader dataReaderECG;
-        private UInt64 PESEL;
-        private string firstName;
-        private string lastName;
+        public UInt64 PESEL { get; set; }
+        public string firstName { get; set; }
+        public string lastName { get; set; }
+        public bool observation { get; set; }
 
 
         public PatientData(string firstName_, string lastName_,
@@ -32,10 +33,11 @@ namespace ptsi_web
             firstName = firstName_;
             lastName = lastName_;
             PESEL = PESEL_;
+            observation = false;
 
-            string pECG = "E:/Studia/Semestr7/PTSI/L/git/ptsi_server/randomdata/ecg.txt";
-            string pPulse = "E:/Studia/Semestr7/PTSI/L/git/ptsi_server/randomdata/pulse.txt";
-            string pOxygen = "E:/Studia/Semestr7/PTSI/L/git/ptsi_server/randomdata/oxygen.txt";
+            string pECG = Global.filePathECG;
+            string pPulse = Global.filePathPulse;
+            string pOxygen = Global.filePathOxygen;
 
             switch (source)
             {

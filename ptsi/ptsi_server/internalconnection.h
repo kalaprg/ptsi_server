@@ -17,7 +17,7 @@ public:
     static pointer create(boost::asio::io_service& io_service,
                           PTSIServer &server);
 
-    boost::asio::ip::tcp::socket& socket()
+    boost::asio::ip::tcp::socket &socket()
     {
         return socket_;
     }

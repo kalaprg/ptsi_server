@@ -1,28 +1,30 @@
 #include <boost/asio.hpp>
 #include "ptsiserver.h"
-#include "connection.h"
 
-Connection::pointer
-Connection::create(boost::asio::io_service &io_service,
+template<class T>
+typename BaseConnection<T>::pointer
+BaseConnection<T>::create(boost::asio::io_service &io_service,
                    PTSIServer &server)
 {
-    return pointer(new Connection(io_service, server));
+    return pointer(new BaseConnection<T>(io_service, server));
 }
 
-void Connection::start()
+template<class T>
+void BaseConnection<T>::start()
 {
-    boost::asio::ip::tcp::endpoint endpoint = socket_.remote_endpoint();
-    boost::asio::ip::tcp::resolver resolver(socket_.get_io_service());
+    boost::asio::ip::tcp::endpoint endpoint = socket().remote_endpoint();
+    boost::asio::ip::tcp::resolver resolver(socket().get_io_service());
     boost::asio::ip::tcp::resolver::iterator it = resolver.resolve(endpoint);
     hostname_ = it->host_name();
     buffer_.resize(1);
     boost::asio::async_read(socket_, boost::asio::buffer(buffer_),
-                            boost::bind(&Connection::read_header,
-                                        shared_from_this(),
+                            boost::bind(&BaseConnection<T>::read_header,
+                                        this->shared_from_this(),
                                         boost::asio::placeholders::error));
 }
 
-void Connection::read_header(const boost::system::error_code &error)
+template<class T>
+void BaseConnection<T>::read_header(const boost::system::error_code &error)
 {
     if(!error)
     {
@@ -34,15 +36,15 @@ void Connection::read_header(const boost::system::error_code &error)
                         new SetPatientPacket());
 
             boost::function<void()> finalCallback(
-                        boost::bind(&Connection::do_setPatient, shared_from_this(),
+                        boost::bind(&BaseConnection<T>::do_setPatient, this->shared_from_this(),
                                     packet));
 
             boost::function<void()> peselCallback(
-                        boost::bind(&Connection::do_read_uint64, shared_from_this(),
+                        boost::bind(&BaseConnection<T>::do_read_uint64, this->shared_from_this(),
                                     boost::ref(packet->pesel_), finalCallback));
 
             boost::function<void()> passwordCallback(
-                        boost::bind(&Connection::do_read_string, shared_from_this(),
+                        boost::bind(&BaseConnection<T>::do_read_string, this->shared_from_this(),
                                     boost::ref(packet->password_), peselCallback));
 
             do_read_string(packet->login_, passwordCallback);
@@ -55,8 +57,8 @@ void Connection::read_header(const boost::system::error_code &error)
                 buffer_.resize(sizeof(TransmissionSetup));
 
             boost::asio::async_read(socket_, boost::asio::buffer(buffer_, sizeof(TransmissionSetup)),
-                                    boost::bind(&Connection::readTransmissionSetup,
-                                                shared_from_this(),
+                                    boost::bind(&BaseConnection<T>::readTransmissionSetup,
+                                                this->shared_from_this(),
                                                 boost::asio::placeholders::error));
 
             break;
@@ -66,8 +68,8 @@ void Connection::read_header(const boost::system::error_code &error)
                 buffer_.resize(sizeof(boost::uint16_t));
 
             boost::asio::async_read(socket_, boost::asio::buffer(buffer_, sizeof(boost::uint16_t)),
-                                    boost::bind(&Connection::readBioSignals,
-                                                shared_from_this(),
+                                    boost::bind(&BaseConnection<T>::readBioSignals,
+                                                this->shared_from_this(),
                                                 boost::asio::placeholders::error));
 
             break;
@@ -82,19 +84,21 @@ void Connection::read_header(const boost::system::error_code &error)
     }
 }
 
-void Connection::do_read_string(std::string &str, boost::function<void()> &callback)
+template<class T>
+void BaseConnection<T>::do_read_string(std::string &str, boost::function<void()> &callback)
 {
     if(!buffer_.size())
         buffer_.resize(1);
 
     boost::asio::async_read(socket_, boost::asio::buffer(buffer_, 1),
-                            boost::bind(&Connection::read_string,
-                                        shared_from_this(),
+                            boost::bind(&BaseConnection<T>::read_string,
+                                        this->shared_from_this(),
                                         boost::ref(str), callback,
                                         boost::asio::placeholders::error));
 }
 
-void Connection::read_string(std::string &str,
+template<class T>
+void BaseConnection<T>::read_string(std::string &str,
                              boost::function<void()> &callback,
                              const boost::system::error_code &error)
 {
@@ -102,8 +106,8 @@ void Connection::read_string(std::string &str,
     {
         buffer_.resize(buffer_[0]);
         boost::asio::async_read(socket_, boost::asio::buffer(buffer_),
-                                boost::bind(&Connection::read_string2,
-                                            shared_from_this(),
+                                boost::bind(&BaseConnection<T>::read_string2,
+                                            this->shared_from_this(),
                                             boost::ref(str), callback,
                                             boost::asio::placeholders::error));
     }
@@ -113,7 +117,8 @@ void Connection::read_string(std::string &str,
     }
 }
 
-void Connection::read_string2(std::string &str,
+template<class T>
+void BaseConnection<T>::read_string2(std::string &str,
                               boost::function<void()> &callback,
                               const boost::system::error_code &error)
 {
@@ -128,18 +133,20 @@ void Connection::read_string2(std::string &str,
     }
 }
 
-void Connection::do_read_uint64(boost::uint64_t &data,
+template<class T>
+void BaseConnection<T>::do_read_uint64(boost::uint64_t &data,
                                 boost::function<void()> &callback)
 {
     buffer_.resize(sizeof(data));
     boost::asio::async_read(socket_, boost::asio::buffer(buffer_),
-                            boost::bind(&Connection::read_uint64,
-                                        shared_from_this(),
+                            boost::bind(&BaseConnection<T>::read_uint64,
+                                        this->shared_from_this(),
                                         boost::ref(data), callback,
                                         boost::asio::placeholders::error));
 }
 
-void Connection::read_uint64(boost::uint64_t &data,
+template<class T>
+void BaseConnection<T>::read_uint64(boost::uint64_t &data,
                              boost::function<void()> &callback,
                              const boost::system::error_code &error)
 {
@@ -155,7 +162,8 @@ void Connection::read_uint64(boost::uint64_t &data,
     }
 }
 
-void Connection::handle_serverResponse(const boost::system::error_code &error)
+template<class T>
+void BaseConnection<T>::handle_serverResponse(const boost::system::error_code &error)
 {
     if(!error)
     {
@@ -164,8 +172,8 @@ void Connection::handle_serverResponse(const boost::system::error_code &error)
             buffer_.resize(1);
 
         boost::asio::async_read(socket_, boost::asio::buffer(buffer_, 1),
-                                boost::bind(&Connection::read_header,
-                                            shared_from_this(),
+                                boost::bind(&BaseConnection<T>::read_header,
+                                            this->shared_from_this(),
                                             boost::asio::placeholders::error));
     }
     else
@@ -174,7 +182,8 @@ void Connection::handle_serverResponse(const boost::system::error_code &error)
     }
 }
 
-void Connection::do_setPatient(SetPatientPacket::pointer patient)
+template<class T>
+void BaseConnection<T>::do_setPatient(SetPatientPacket::pointer patient)
 {
     server_.debugStream_ << "Login: " << patient->login() << " password: "
                          << patient->password() << std::endl
@@ -203,12 +212,13 @@ void Connection::do_setPatient(SetPatientPacket::pointer patient)
         buffer_[1] = 0;
     }
     boost::asio::async_write(socket_, boost::asio::buffer(buffer_, 2),
-                             boost::bind(&Connection::handle_serverResponse,
-                                         shared_from_this(),
+                             boost::bind(&BaseConnection<T>::handle_serverResponse,
+                                         this->shared_from_this(),
                                          boost::asio::placeholders::error()));
 }
 
-void Connection::readTransmissionSetup(const boost::system::error_code &error)
+template<class T>
+void BaseConnection<T>::readTransmissionSetup(const boost::system::error_code &error)
 {
     char response;
     if(!error)
@@ -249,12 +259,13 @@ void Connection::readTransmissionSetup(const boost::system::error_code &error)
     buffer_[0] = 1;
     buffer_[1] = response;
     boost::asio::async_write(socket_, boost::asio::buffer(buffer_, 2),
-                             boost::bind(&Connection::handle_serverResponse,
-                                         shared_from_this(),
+                             boost::bind(&BaseConnection<T>::handle_serverResponse,
+                                         this->shared_from_this(),
                                          boost::asio::placeholders::error()));
 }
 
-void Connection::readBioSignals(const boost::system::error_code &error)
+template<class T>
+void BaseConnection<T>::readBioSignals(const boost::system::error_code &error)
 {
     if(!error)
     {
@@ -263,8 +274,8 @@ void Connection::readBioSignals(const boost::system::error_code &error)
             buffer_.resize(size);
 
         boost::asio::async_read(socket_, boost::asio::buffer(buffer_, size),
-                                 boost::bind(&Connection::readBioSignals2,
-                                             shared_from_this(), size,
+                                 boost::bind(&BaseConnection<T>::readBioSignals2,
+                                             this->shared_from_this(), size,
                                              boost::asio::placeholders::error()));
     }
     else
@@ -273,7 +284,8 @@ void Connection::readBioSignals(const boost::system::error_code &error)
     }
 }
 
-void Connection::readBioSignals2(boost::uint32_t size, const boost::system::error_code &error)
+template<class T>
+void BaseConnection<T>::readBioSignals2(boost::uint32_t size, const boost::system::error_code &error)
 {
     if(!session_)
         session_ = server_.acquireSession(hostname_, 0);
@@ -326,8 +338,8 @@ void Connection::readBioSignals2(boost::uint32_t size, const boost::system::erro
     buffer_[0] = 2;
     buffer_[1] = response;
     boost::asio::async_write(socket_, boost::asio::buffer(buffer_, 2),
-                             boost::bind(&Connection::handle_serverResponse,
-                                         shared_from_this(),
+                             boost::bind(&BaseConnection<T>::handle_serverResponse,
+                                         this->shared_from_this(),
                                          boost::asio::placeholders::error()));
 
     if(response == 0)
@@ -336,14 +348,24 @@ void Connection::readBioSignals2(boost::uint32_t size, const boost::system::erro
     }
 }
 
-Connection::Connection(boost::asio::io_service &io_service,
+template<class T>
+BaseConnection<T>::BaseConnection(boost::asio::io_service &io_service,
                        PTSIServer &server)
-    : socket_(io_service), server_(server)
+    : socket_(io_service), server_(server), low_socket_(socket_)
 {
-    server_.debugStream_ << "Connection()" << std::endl;
+    server_.debugStream_ << "BaseConnection()" << std::endl;
 }
 
-Connection::~Connection()
+template<class T>
+BaseConnection<T>::~BaseConnection()
 {
-    server_.debugStream_ << "~Connection()" << std::endl;
+    server_.debugStream_ << "~BaseConnection()" << std::endl;
+}
+
+template<class T>
+BaseConnection<T>::BaseConnection(boost::asio::io_service& io_service, PTSIServer &server,
+                                  boost::asio::ssl::context &context)
+    : socket_(io_service, context), server_(server), low_socket_(socket_.next_layer())
+{
+    server_.debugStream_ << "BaseConnection()" << std::endl;
 }

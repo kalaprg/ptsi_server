@@ -7,10 +7,10 @@ LIBS += -lboost_system -lmysqlcppconn
 SOURCES += \
     ptsiserver.cpp \
     session.cpp \
-    connection.cpp \
     common.cpp \
     internalconnection.cpp \
-    biosignaldata.cpp
+    biosignaldata.cpp \
+    tlsconnection.cpp \
 
 HEADERS += \
     ptsiserver.h \
@@ -18,5 +18,7 @@ HEADERS += \
     connection.h \
     common.h \
     internalconnection.h \
-    biosignaldata.h
+    biosignaldata.h \
+    tlsconnection.h \
+    connection_impl.h
 

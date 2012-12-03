@@ -9,8 +9,6 @@
 
 enum PacketType {SET_PATIENT = 0, SETUP_TRANSMISSION, BIOSIGNALS};
 
-class Connection;
-
 class SetPatientPacket
         : public boost::enable_shared_from_this<SetPatientPacket>
 {
@@ -20,7 +18,7 @@ public:
     const std::string &login() const;
     const std::string &password() const;
     boost::uint64_t pesel() const;
-    friend class Connection;
+    template<typename T> friend class BaseConnection;
 private:
     std::string login_;
     std::string password_;
@@ -58,10 +56,14 @@ public:
     const std::string &getMySQLUser() const;
     const std::string &getMySQLPassword() const;
     const std::string &getMySQLDatabase() const;
+    const boost::filesystem::path &getCertificateFile() const;
+    const boost::filesystem::path &getPKeyFile() const;
+    const std::string &getPKeyPassphrase() const;
 private:
     boost::program_options::options_description options_;
     boost::program_options::options_description generalOptions_;
     boost::program_options::options_description mysqlOptions_;
+    boost::program_options::options_description sslOptions;
     boost::program_options::variables_map vm_;
     std::string mysqlServer_;
     std::string mysqlUser_;
@@ -71,6 +73,9 @@ private:
     unsigned short port_;
     unsigned short internalPort_;
     unsigned short securePort_;
+    boost::filesystem::path certificateFile_;
+    boost::filesystem::path rsaKeyFile_;
+    std::string keyPassword_;
 };
 
 extern PTSIOptions globalOptions;

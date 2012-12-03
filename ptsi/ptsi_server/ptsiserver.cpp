@@ -10,12 +10,15 @@
 #include <cppconn/resultset.h>
 #include "common.h"
 #include "ptsiserver.h"
+#include "connection_impl.h"
 
 PTSIServer::PTSIServer(boost::asio::io_service &io_service,
                        std::ostream &errorStream, std::ostream &debugStream)
     : acceptor_(io_service), internalAcceptor_(io_service, boost::asio::ip::tcp::endpoint(
                                                    boost::asio::ip::tcp::v4(), globalOptions.getInternalPort())),
-      debugStream_(debugStream), errorStream_(errorStream)
+      secureAcceptor_(io_service),
+      debugStream_(debugStream), errorStream_(errorStream),
+      context_(boost::asio::ssl::context::tlsv1_server)
 {
     if(globalOptions.isUnsecuredConnectionsEnabled())
     {
@@ -24,6 +27,32 @@ PTSIServer::PTSIServer(boost::asio::io_service &io_service,
         acceptor_.set_option(boost::asio::socket_base::reuse_address(true));
         acceptor_.bind(endpoint);
         acceptor_.listen();
+    }
+
+    if(globalOptions.isSecuredConnectionsEnabled())
+    {
+        boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), globalOptions.getSecurePort());
+        secureAcceptor_.open(endpoint.protocol());
+        secureAcceptor_.set_option(boost::asio::socket_base::reuse_address(true));
+        secureAcceptor_.bind(endpoint);
+        secureAcceptor_.listen();
+
+        try
+        {
+            context_.set_options(boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::no_sslv2);
+            context_.use_certificate_file(globalOptions.getCertificateFile().c_str(), boost::asio::ssl::context::pem);
+            context_.use_rsa_private_key_file(globalOptions.getPKeyFile().c_str(), boost::asio::ssl::context::pem);
+            if(globalOptions.getPKeyPassphrase().size())
+            {
+                context_.set_password_callback(boost::bind(&PTSIServer::getPassword, this));
+            }
+        }
+        catch(boost::system::system_error &e)
+        {
+            errorStream_ << "Exception: " << e.what() << std::endl;
+            io_service.stop();
+            return;
+        }
     }
 
     if(!initMySQL())
@@ -35,6 +64,9 @@ PTSIServer::PTSIServer(boost::asio::io_service &io_service,
     setupSessions();
     if(globalOptions.isUnsecuredConnectionsEnabled())
         start_accept();
+
+    if(globalOptions.isSecuredConnectionsEnabled())
+        start_acceptSecure();
 
     start_acceptInternal();
 }
@@ -64,6 +96,16 @@ void PTSIServer::start_acceptInternal()
                                                boost::asio::placeholders::error));
 }
 
+void PTSIServer::start_acceptSecure()
+{
+    TLSConnection::pointer new_connection =
+            TLSConnection::create(acceptor_.get_io_service(), *this);
+
+    secureAcceptor_.async_accept(new_connection->socket().lowest_layer(),
+                           boost::bind(&PTSIServer::handle_acceptSecure, this, new_connection,
+                                       boost::asio::placeholders::error));
+}
+
 void PTSIServer::handle_accept(Connection::pointer new_connection,
                                const boost::system::error_code &error)
 {
@@ -91,6 +133,20 @@ void PTSIServer::handle_acceptInternal(InternalConnection::pointer new_connectio
     }
 
     start_acceptInternal();
+}
+
+void PTSIServer::handle_acceptSecure(TLSConnection::pointer new_connection, const boost::system::error_code &error)
+{
+    if (!error)
+    {
+        new_connection->start();
+    }
+    else
+    {
+        errorStream_ << __FUNCTION__ << " Error: " << error.message() << std::endl;
+    }
+
+    start_acceptSecure();
 }
 
 bool PTSIServer::authenticate(const std::string &login, const std::string &password)
@@ -221,4 +277,9 @@ void PTSIServer::setupSessions()
         peselSessionMap_.insert(std::pair<boost::uint64_t, Session::pointer>((*it)->getPesel(), *it));
         deviceSessionMap_.insert(std::pair<std::string, Session::pointer>((*it)->getDeviceName(), *it));
     }
+}
+
+std::string PTSIServer::getPassword() const
+{
+    return globalOptions.getPKeyPassphrase();
 }
